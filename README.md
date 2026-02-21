@@ -2,7 +2,7 @@
 
 This repository contains the implementation of my Bachelor's thesis project focused on a hybrid approach to procedural content generation (PCG). The project combines the **Wave Function Collapse (WFC)** algorithm with **Ant Colony Optimization (ACO)** to create navigable and structurally logical environments.
 
-## 🎯 Key Objectives
+## Key Objectives
 
 The main goal is to develop a hybrid algorithm where agent-based feedback (ACO) influences the constraint-based generation (WFC).
 
@@ -11,14 +11,15 @@ The main goal is to develop a hybrid algorithm where agent-based feedback (ACO) 
 * **Comparative Analysis:** Evaluating the performance and output quality of the Hybrid approach vs. Pure WFC generation.
 * **Visual Debugging:** Real-time visualization of pheromone trails and WFC entropy state within the Unity scene.
 
-## 🛠 Tech Stack
+## Tech Stack
 
 * **Engine:** Unity 6.3
 * **Language:** C#
-* **Algorithm Base:** * Wave Function Collapse (Constraint Satisfaction)
+* **Algorithm Base:** 
+    * Wave Function Collapse (Constraint Satisfaction)
     * Ant Colony Optimization (Swarm Intelligence / Pathfinding)
 
-## 📋 Project Status & Roadmap
+## Project Status & Roadmap
 
 - [x] Initial Research & Literature Review
 - [x] Repository Setup & Environment Configuration
