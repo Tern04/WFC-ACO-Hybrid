@@ -1,4 +1,11 @@
+# macOS files
 .DS_Store
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+*.idea.meta
+[Aa]ssets/Plugins/Editor/JetBrains*
 
 .utmp/
 [Ll]ibrary/
