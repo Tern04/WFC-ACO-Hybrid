@@ -6,6 +6,12 @@ namespace _Project.Scripts.MapGeneration.Data
         public int Rotation; // 0, 1, 2, 3
         public string[] Sockets; // Indexy 0:N, 1:E, 2:S, 3:W
 
+        /// <summary>
+        /// Constructor for the TileVariant class. It takes a TileData object and a rotation value (0-3)
+        /// and calculates the sockets based on the original tile data and the rotation.
+        /// </summary>
+        /// <param name="data">Tile data</param>
+        /// <param name="rotation">Rotation value (0-3)</param>
         public TileVariant(TileData data, int rotation)
         {
             Data = data;
