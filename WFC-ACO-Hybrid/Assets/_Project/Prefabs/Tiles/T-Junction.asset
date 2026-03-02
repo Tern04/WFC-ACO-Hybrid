@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10a709b2505e346f59aa4659f0d36d8f, type: 3}
+  m_Name: T-Junction
+  m_EditorClassIdentifier: Assembly-CSharp::_Project.Scripts.MapGeneration.Data.TileData
+  prefab: {fileID: 629775790823525998, guid: 954851c9006004b758534d69cb3a1f23, type: 3}
+  tileName: T-Junction
+  socketNorth: path
+  socketEast: wall
+  socketSouth: path
+  socketWest: path
+  baseWeight: 1
