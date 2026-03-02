@@ -10,9 +10,9 @@ namespace _Project.Scripts.MapGeneration.Data
         public string tileName;   // Name of the tile for identification
         
         [Header("Sockets (Neighbourhood Connections)")]
-        // Sockets for neighbouring connections 
-        public string socketUp; // Socket for the tile above
-        public string socketDown; // Socket for the tile below
+        // Sockets for neighboring connections 
+        //public string socketUp; // Socket for the tile above
+        //public string socketDown; // Socket for the tile below
         public string socketNorth; // Socket for the tile to the north
         public string socketEast; // Socket for the tile to the east
         public string socketSouth; // Socket for the tile to the south

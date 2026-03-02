@@ -4,7 +4,7 @@ namespace _Project.Scripts.MapGeneration.Data
     {
         public TileData Data;
         public int Rotation; // 0, 1, 2, 3
-        public string[] Sockets; // Indexy 0:N, 1:E, 2:S, 3:W
+        public string[] Sockets; // Indexes 0:N, 1:E, 2:S, 3:W
 
         /// <summary>
         /// Constructor for the TileVariant class. It takes a TileData object and a rotation value (0-3)
