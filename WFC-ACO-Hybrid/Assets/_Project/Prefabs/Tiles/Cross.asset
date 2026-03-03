@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 10a709b2505e346f59aa4659f0d36d8f, type: 3}
   m_Name: Cross
   m_EditorClassIdentifier: Assembly-CSharp::_Project.Scripts.MapGeneration.Data.TileData
-  prefab: {fileID: 1164443812690696094, guid: 525e2c13e2eef4947b5819ed000e1ad4, type: 3}
+  prefab: {fileID: 1671938266919077892, guid: 519585bd04ce24dd4baf2dec532abb85, type: 3}
   tileName: Cross
   socketNorth: path
   socketEast: path
