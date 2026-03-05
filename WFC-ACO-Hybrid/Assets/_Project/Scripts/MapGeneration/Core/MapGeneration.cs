@@ -32,8 +32,8 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             InitializeGrid(); 
             //RunWFC();
-            //StartCoroutine(RunWFCAnimated());
-            GenerateValidMap();
+            StartCoroutine(RunWFCAnimated());
+            //GenerateValidMap();
         }
 
         /// <summary>
@@ -76,7 +76,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <summary>
         /// Sets the start and finish tiles on the map.
         /// </summary>
-        void SetStartAndFinish()
+        void SetStartAndFinish(bool visualize = false)
         {
             // Start tile on (0,0)
             Cell startCell = grid[0, 0];
@@ -88,6 +88,7 @@ namespace _Project.Scripts.MapGeneration.Core
 
             CollapseCell(startCell);
             Propagate(startCell);
+            if (visualize) VisualizeCell(startCell);
 
             // Finish tile on (mapWidth-1, mapHeight-1)
             Cell endCell = grid[mapWidth - 1, mapHeight - 1];
@@ -99,6 +100,7 @@ namespace _Project.Scripts.MapGeneration.Core
 
             CollapseCell(endCell);
             Propagate(endCell);
+            if (visualize) VisualizeCell(endCell);
         }
         
         /// <summary>
@@ -404,7 +406,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <returns></returns>
         public IEnumerator RunWFCAnimated()
         {
-            SetStartAndFinish();
+            SetStartAndFinish(visualize: true);
             while (!IsFullyCollapsed())
             {
                 Cell nextCell = GetCellWithLowestEntropy();
