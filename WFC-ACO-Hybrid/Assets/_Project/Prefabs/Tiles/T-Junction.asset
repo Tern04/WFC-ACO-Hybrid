@@ -15,7 +15,7 @@ MonoBehaviour:
   prefab: {fileID: 629775790823525998, guid: 954851c9006004b758534d69cb3a1f23, type: 3}
   tileName: T-Junction
   socketNorth: path
-  socketEast: wall
-  socketSouth: path
+  socketEast: path
+  socketSouth: wall
   socketWest: path
   baseWeight: 1
