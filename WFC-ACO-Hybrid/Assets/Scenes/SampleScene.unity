@@ -487,6 +487,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e8f97063d7beb4b82bf25e83822b6065, type: 2}
   - {fileID: 11400000, guid: 30c0e94aa0d0b4201b09698870b7cce2, type: 2}
   - {fileID: 11400000, guid: db36aae095af541b7912604f4823e235, type: 2}
+  - {fileID: 11400000, guid: c4297ddceb88c45b6b1e17cb03f66744, type: 2}
+  - {fileID: 11400000, guid: 2720361808e7943bca49be713f54ed25, type: 2}
   startTileData: {fileID: 11400000, guid: ddd8675d46646490c980422d87bf5b45, type: 2}
   finishTileData: {fileID: 11400000, guid: ddd8675d46646490c980422d87bf5b45, type: 2}
 --- !u!4 &900329231
