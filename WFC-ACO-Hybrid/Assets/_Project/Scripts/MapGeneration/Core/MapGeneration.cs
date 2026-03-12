@@ -32,8 +32,8 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             InitializeGrid(); 
             //RunWFC();
-            StartCoroutine(RunWFCAnimated());
-            //GenerateValidMap();
+            //StartCoroutine(RunWFCAnimated());
+            GenerateValidMap();
         }
 
         /// <summary>
@@ -109,6 +109,7 @@ namespace _Project.Scripts.MapGeneration.Core
         public void RunWFC()
         {
             SetStartAndFinish();
+            ApplyBoundaryConstraints();
             
             while (!IsFullyCollapsed())
             {
@@ -374,6 +375,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 attempts++;
                 ClearScene();
                 InitializeGrid(); // Reset of data
+                ApplyBoundaryConstraints();
                 
                 RunWFC();
 
@@ -407,6 +409,7 @@ namespace _Project.Scripts.MapGeneration.Core
         public IEnumerator RunWFCAnimated()
         {
             SetStartAndFinish(visualize: true);
+            ApplyBoundaryConstraints();
             while (!IsFullyCollapsed())
             {
                 Cell nextCell = GetCellWithLowestEntropy();
@@ -422,6 +425,46 @@ namespace _Project.Scripts.MapGeneration.Core
                 
                 VisualizeCell(nextCell); 
                 yield return new WaitForSeconds(0.05f); // Small delay
+            }
+        }
+        
+        void ApplyBoundaryConstraints()
+        {
+            for (int x = 0; x < mapWidth; x++)
+            {
+                for (int y = 0; y < mapHeight; y++)
+                {
+                    Cell cell = grid[x, y];
+                    List<TileVariant> toRemove = new List<TileVariant>();
+
+                    foreach (var variant in cell.AvailableVariants)
+                    {
+                        bool isValid = true;
+                        
+                        // North edge of the map -> socket North must be "wall"
+                        if (y == mapHeight - 1 && variant.Sockets[0] != "wall") isValid = false;
+                
+                        // East edge of the map -> socket East must be "wall"
+                        if (x == mapWidth - 1 && variant.Sockets[1] != "wall") isValid = false;
+                
+                        // South edge of the map -> socket South must be "wall"
+                        if (y == 0 && variant.Sockets[2] != "wall") isValid = false;
+                
+                        // West edge of the map -> socket West must be "wall"
+                        if (x == 0 && variant.Sockets[3] != "wall") isValid = false;
+
+                        if (!isValid)
+                        {
+                            toRemove.Add(variant);
+                        }
+                    }
+
+                    // Remove invalid variants
+                    foreach (var variant in toRemove)
+                    {
+                        cell.AvailableVariants.Remove(variant);
+                    }
+                }
             }
         }
         
