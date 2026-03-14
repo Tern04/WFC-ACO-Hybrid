@@ -9,7 +9,10 @@ namespace _Project.Scripts.Utils
         [Header("Movement Settings")]
         public float moveSpeed = 10f;
         public float fastMoveSpeed = 20f;
+        public float jumpHeight = 5f;
         public float gravity = -9.81f; // Gravity
+        public float jumpBufferTime = 0.15f;
+        public float coyoteTime = 0.1f;
 
         [Header("Mouse Look Settings")]
         public float lookSpeed = 0.1f;
@@ -18,6 +21,8 @@ namespace _Project.Scripts.Utils
         private CharacterController controller;
         private Vector3 velocity;
         private float xRotation = 0f;
+        private float jumpBufferCounter = 0f;
+        private float coyoteCounter = 0f;
 
         void Start()
         {
@@ -77,10 +82,38 @@ namespace _Project.Scripts.Utils
             Vector3 move = transform.right * x + transform.forward * z;
             controller.Move(move.normalized * currentSpeed * Time.deltaTime);
 
+            bool grounded = controller.isGrounded;
+
+            if (grounded)
+            {
+                coyoteCounter = coyoteTime;
+            }
+            else
+            {
+                coyoteCounter -= Time.deltaTime;
+            }
+
+            if (Keyboard.current.spaceKey.wasPressedThisFrame)
+            {
+                jumpBufferCounter = jumpBufferTime;
+            }
+            else
+            {
+                jumpBufferCounter -= Time.deltaTime;
+            }
+
             // Gravity apllication
-            if (controller.isGrounded && velocity.y < 0)
+            if (grounded && velocity.y < 0)
             {
                 velocity.y = -2f; // Grounding the player to prevent floating
+            }
+
+            if (jumpBufferCounter > 0f && coyoteCounter > 0f)
+            {
+                // Convert desired jump height into initial vertical velocity.
+                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                jumpBufferCounter = 0f;
+                coyoteCounter = 0f;
             }
 
             velocity.y += gravity * Time.deltaTime;
