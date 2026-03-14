@@ -15,7 +15,7 @@ MonoBehaviour:
   prefab: {fileID: 5451462867229004097, guid: e2d177a254a814bf2bb92090a4da67af, type: 3}
   tileName: Stairs_Top
   socketUp: wall
-  socketDown: path_vertical
+  socketDown: stairs_up
   socketNorth: path
   socketEast: wall
   socketSouth: wall

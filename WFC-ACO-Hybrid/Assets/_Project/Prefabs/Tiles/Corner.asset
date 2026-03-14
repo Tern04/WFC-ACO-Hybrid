@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::_Project.Scripts.MapGeneration.Data.TileData
   prefab: {fileID: 1901649949650089037, guid: ed7e1045181f044d0a0175e91710567e, type: 3}
   tileName: Corner
+  socketUp: wall
+  socketDown: wall
   socketNorth: wall
   socketEast: path
   socketSouth: path

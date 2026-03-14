@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::_Project.Scripts.MapGeneration.Data.TileData
   prefab: {fileID: 3898333627281171916, guid: a12457d2fbee94458bc6a4e65e345c98, type: 3}
   tileName: Stairs_Bottom
-  socketUp: path_vertical
+  socketUp: stairs_up
   socketDown: wall
   socketNorth: wall
   socketEast: wall

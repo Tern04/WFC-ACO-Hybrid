@@ -206,7 +206,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.6, z: 0}
+  m_LocalPosition: {x: 0, y: 2.6, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -462,7 +462,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::_Project.Scripts.MapGeneration.Core.MapGenerator
   mapWidth: 10
-  mapHeight: 10
+  mapFloors: 2
+  mapDepth: 10
   tileSize: 20
   allAvailableTiles:
   - {fileID: 11400000, guid: ddd8675d46646490c980422d87bf5b45, type: 2}
@@ -524,7 +525,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::_Project.Scripts.Utils.FirstPersonCamera
   moveSpeed: 10
   fastMoveSpeed: 20
+  jumpHeight: 5
   gravity: -9.81
+  jumpBufferTime: 0.15
+  coyoteTime: 0.1
   lookSpeed: 0.1
   playerCamera: {fileID: 330585546}
 --- !u!143 &2146765890
@@ -618,8 +622,8 @@ Transform:
   m_GameObject: {fileID: 2146765888}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1, y: 2, z: -2}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: 1, y: 3.6, z: -2}
+  m_LocalScale: {x: 1, y: 2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 330585546}
