@@ -10,7 +10,8 @@ namespace _Project.Scripts.MapGeneration.Core
     {
         [Header("Map Settings")] 
         public int mapWidth = 10;
-        public int mapHeight = 10;
+        public int mapFloors = 3;
+        public int mapDepth = 10;
         public float tileSize = 20f; 
 
         [Header("WFC Data")] 
@@ -20,7 +21,7 @@ namespace _Project.Scripts.MapGeneration.Core
         public TileData startTileData;
         public TileData finishTileData;
 
-        private Cell[,] grid; // 2D array representing the map
+        private Cell[,,] grid; // 2D array representing the map
         private List<TileVariant> standardVariants; // List of all possible tile variants
         private List<TileVariant> startVariants; // List of possible start tile variants
         private List<TileVariant> finishVariants; // List of possible finish tile variants
@@ -63,12 +64,15 @@ namespace _Project.Scripts.MapGeneration.Core
             }
 
             // Initialize the grid
-            grid = new Cell[mapWidth, mapHeight];
+            grid = new Cell[mapWidth, mapFloors, mapDepth];
             for (int x = 0; x < mapWidth; x++)
             {
-                for (int y = 0; y < mapHeight; y++)
+                for (int y = 0; y < mapFloors; y++)
                 {
-                    grid[x, y] = new Cell(new Vector2Int(x, y), standardVariants);
+                    for (int z = 0; z < mapDepth; z++)
+                    {
+                        grid[x, y, z] = new Cell(new Vector3Int(x, y, z), standardVariants);
+                    }
                 }
             }
         }
@@ -78,31 +82,34 @@ namespace _Project.Scripts.MapGeneration.Core
         /// </summary>
         void SetStartAndFinish(bool visualize = false)
         {
-            // Start tile on (0,0)
-            Cell startCell = grid[0, 0];
-            
-            // Filter based on the path sockets
+            // Start in the first floor, first corner
+            Cell startCell = grid[0, 0, 0];
             startCell.AvailableVariants = startVariants
                 .Where(v => v.Sockets[0] == "path" || v.Sockets[1] == "path")
                 .ToList();
-
+            
             CollapseCell(startCell);
             Propagate(startCell);
-            if (visualize) VisualizeCell(startCell);
+            if (visualize)
+            {
+                VisualizeCell(startCell);
+            }
 
-            // Finish tile on (mapWidth-1, mapHeight-1)
-            Cell endCell = grid[mapWidth - 1, mapHeight - 1];
-            
-            // Filter based on the path sockets
+            // Finish in the opposite corner at the last floor 
+            Cell endCell = grid[mapWidth - 1, mapFloors - 1, mapDepth - 1];
             endCell.AvailableVariants = finishVariants
                 .Where(v => v.Sockets[2] == "path" || v.Sockets[3] == "path")
                 .ToList();
-
+            
             CollapseCell(endCell);
             Propagate(endCell);
-            if (visualize) VisualizeCell(endCell);
+            if (visualize)
+            {
+                VisualizeCell(endCell);
+            }
+            
         }
-        
+
         /// <summary>
         /// Main WFC algorithm.
         /// </summary>
@@ -153,13 +160,16 @@ namespace _Project.Scripts.MapGeneration.Core
 
             for (int x = 0; x < mapWidth; x++)
             {
-                for (int y = 0; y < mapHeight; y++)
+                for (int y = 0; y < mapFloors; y++)
                 {
-                    Cell cell = grid[x, y];
-                    if (!cell.IsCollapsed && cell.Entropy < lowestEntropy)
+                    for (int z = 0; z < mapDepth; z++)
                     {
-                        lowestEntropy = cell.Entropy;
-                        bestCell = cell;
+                        Cell cell = grid[x, y, z];
+                        if (!cell.IsCollapsed && cell.Entropy < lowestEntropy)
+                        {
+                            lowestEntropy = cell.Entropy;
+                            bestCell = cell;
+                        }
                     }
                 }
             }
@@ -187,39 +197,63 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             Stack<Cell> stack = new Stack<Cell>();
             stack.Push(collapsedCell);
+            
+            // Check all 6 directions
+            Vector3Int[] directions = { 
+                new Vector3Int(0, 0, 1),    // North - 0
+                new Vector3Int(1, 0, 0),    // East - 1
+                new Vector3Int(0, 0, -1),   // South - 2
+                new Vector3Int(-1, 0, 0),   // West - 3
+                new Vector3Int(0, 1, 0),    // Up - 4
+                new Vector3Int(0, -1, 0)    // Down - 5
+            };
 
             while (stack.Count > 0)
             {
                 Cell current = stack.Pop();
 
-                // Check all 4 directions
-                Vector2Int[] directions = { 
-                    new Vector2Int(0, 1),  // North
-                    new Vector2Int(1, 0),  // East
-                    new Vector2Int(0, -1), // South
-                    new Vector2Int(-1, 0)  // West
-                };
-
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < 6; i++)
                 {
-                    Vector2Int neighborPos = current.GridPosition + directions[i];
-
+                    Vector3Int nPos = current.GridPosition + directions[i];
+                    
                     // Check if the neighbor is within the map bounds
-                    if (neighborPos.x >= 0 && neighborPos.x < mapWidth && neighborPos.y >= 0 && neighborPos.y < mapHeight)
+                    if (nPos.x >= 0 && nPos.x < mapWidth && 
+                        nPos.y >= 0 && nPos.y < mapFloors && 
+                        nPos.z >= 0 && nPos.z < mapDepth)
                     {
-                        Cell neighbor = grid[neighborPos.x, neighborPos.y];
-                        if (neighbor.IsCollapsed) continue;
-
-                        // Cut down the neighbours variants
-                        bool changed = ConstrainNeighbor(current, neighbor, i);
+                        Cell neighbor = grid[nPos.x, nPos.y, nPos.z];
                         
+                        if (neighbor.IsCollapsed)
+                        {
+                            continue;
+                        }
+
+                        
+                        bool changed = ConstrainNeighbor(current, neighbor, i);
+
                         if (changed)
                         {
                             stack.Push(neighbor);
                         }
+                        
                     }
                 }
             }
+        }
+
+        int GetOppositeSide(int directionIndex)
+        {
+            if (directionIndex < 4)
+            {
+                return (directionIndex + 2) % 4; // North -> South, East -> West...
+            }
+
+            if (directionIndex == 4)
+            {
+                return 5; // Up -> Down
+            }
+
+            return 4; // Down -> Up
         }
 
         /// <summary>
@@ -235,7 +269,7 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             bool changed = false;
             // directionIndex: 0:N, 1:E, 2:S, 3:W
-            int neighborSideIndex = (directionIndex + 2) % 4;
+            int neighborSideIndex = GetOppositeSide(directionIndex);
 
             List<TileVariant> toRemove = new List<TileVariant>();
 
@@ -277,7 +311,10 @@ namespace _Project.Scripts.MapGeneration.Core
             {
                 if (cell.CollapsedVariant != null)
                 {
-                    Vector3 pos = new Vector3(cell.GridPosition.x * tileSize, 0, cell.GridPosition.y * tileSize);
+                    Vector3 pos = new Vector3(cell.GridPosition.x * tileSize,
+                        cell.GridPosition.y * tileSize,
+                        cell.GridPosition.z * tileSize);
+                    
                     Quaternion rot = Quaternion.Euler(0, cell.CollapsedVariant.Rotation * 90, 0);
                     Instantiate(cell.CollapsedVariant.Data.prefab, pos, rot, transform);
                 }
@@ -291,21 +328,21 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <param name="start">The starting point of the path search.</param>
         /// <param name="end">The target point to check for connectivity.</param>
         /// <returns>True if a path exists from the start to the end point; otherwise, false.</returns>
-        public bool IsPathPossible(Vector2Int start, Vector2Int end)
+        public bool IsPathPossible(Vector3Int start, Vector3Int end)
         {
-            Queue<Vector2Int> frontier = new Queue<Vector2Int>();
+            Queue<Vector3Int> frontier = new Queue<Vector3Int>();
             frontier.Enqueue(start);
 
-            HashSet<Vector2Int> reached = new HashSet<Vector2Int>();
+            HashSet<Vector3Int> reached = new HashSet<Vector3Int>();
             reached.Add(start);
 
             while (frontier.Count > 0)
             {
-                Vector2Int current = frontier.Dequeue();
+                Vector3Int current = frontier.Dequeue();
 
                 if (current == end) return true; // Path was found
 
-                foreach (Vector2Int next in GetPathNeighbors(current))
+                foreach (Vector3Int next in GetPathNeighbors(current))
                 {
                     if (!reached.Contains(next))
                     {
@@ -323,36 +360,45 @@ namespace _Project.Scripts.MapGeneration.Core
         /// </summary>
         /// <param name="pos">Position of tile on the grid</param>
         /// <returns></returns>
-        List<Vector2Int> GetPathNeighbors(Vector2Int pos)
+        List<Vector3Int> GetPathNeighbors(Vector3Int pos)
         {
-            List<Vector2Int> neighbors = new List<Vector2Int>();
-            Cell currentCell = grid[pos.x, pos.y];
+            List<Vector3Int> neighbors = new List<Vector3Int>();
+            Cell currentCell = grid[pos.x, pos.y, pos.z];
             
             if (currentCell.CollapsedVariant == null) return neighbors;
 
-            Vector2Int[] directions = { 
-                new Vector2Int(0, 1),  // N (index 0)
-                new Vector2Int(1, 0),  // E (index 1)
-                new Vector2Int(0, -1), // S (index 2)
-                new Vector2Int(-1, 0)  // W (index 3)
+            Vector3Int[] directions = { 
+                new Vector3Int(0, 0, 1),    // North - 0
+                new Vector3Int(1, 0, 0),    // East - 1
+                new Vector3Int(0, 0, -1),   // South - 2
+                new Vector3Int(-1, 0, 0),   // West - 3
+                new Vector3Int(0, 1, 0),    // Up - 4
+                new Vector3Int(0, -1, 0)    // Down - 5
             };
 
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 6; i++)
             {
+                string socket = currentCell.CollapsedVariant.Sockets[i];   
                 
-                if (currentCell.CollapsedVariant.Sockets[i] == "path")
+                // Check if the neighbor is a path
+                if (socket == "path" || socket.StartsWith("path_vertical") || socket.StartsWith("stairs_up"))
                 {
-                    Vector2Int neighborPos = pos + directions[i];
+                    Vector3Int nPos = pos + directions[i];
                     
-                    if (neighborPos.x >= 0 && neighborPos.x < mapWidth && neighborPos.y >= 0 && neighborPos.y < mapHeight)
+                    if (nPos.x >= 0 && nPos.x < mapWidth && nPos.y >= 0 && nPos.y < mapFloors && nPos.z >= 0 && nPos.z < mapDepth)
                     {
-                        Cell neighborCell = grid[neighborPos.x, neighborPos.y];
-                        int oppositeSide = (i + 2) % 4;
-                        
-                        if (neighborCell.CollapsedVariant != null && 
-                            neighborCell.CollapsedVariant.Sockets[oppositeSide] == "path")
+                        Cell neighborCell = grid[nPos.x, nPos.y, nPos.z];
+                        int oppositeSide = GetOppositeSide(i);
+
+                        if (neighborCell.CollapsedVariant != null)
                         {
-                            neighbors.Add(neighborPos);
+                            string neighborSocket = neighborCell.CollapsedVariant.Sockets[oppositeSide];
+                            
+                            // Check if the neighbor's socket is compatible with the current cell's socket
+                            if (neighborSocket == "path" || neighborSocket.StartsWith("path_vertical") || neighborSocket.StartsWith("stairs_up"))
+                            {
+                                neighbors.Add(nPos);
+                            }
                         }
                     }
                 }
@@ -370,7 +416,7 @@ namespace _Project.Scripts.MapGeneration.Core
             int attempts = 0;
             bool success = false;
 
-            while (!success && attempts < 100)
+            while (!success && attempts < 200)
             {
                 attempts++;
                 ClearScene();
@@ -379,12 +425,17 @@ namespace _Project.Scripts.MapGeneration.Core
                 
                 RunWFC();
 
-                if (IsPathPossible(new Vector2Int(0, 0), new Vector2Int(mapWidth - 1, mapHeight - 1)))
+                if (IsFullyCollapsed() && IsPathPossible(new Vector3Int(0, 0, 0),
+                        new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1)))
                 {
                     success = true;
-                    Debug.Log($"Map generated with {attempts} attempts");
+                    Debug.Log($"Valid map generated after {attempts} attempts.");
                     InstantiateTiles();
                 }
+            }
+            if (!success)
+            {
+                Debug.LogError("Failed to generate a valid map after 200 attempts.");
             }
         }
         
@@ -432,37 +483,31 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             for (int x = 0; x < mapWidth; x++)
             {
-                for (int y = 0; y < mapHeight; y++)
+                for (int y = 0; y < mapFloors; y++)
                 {
-                    Cell cell = grid[x, y];
-                    List<TileVariant> toRemove = new List<TileVariant>();
-
-                    foreach (var variant in cell.AvailableVariants)
+                    for (int z = 0; z < mapDepth; z++)
                     {
-                        bool isValid = true;
-                        
-                        // North edge of the map -> socket North must be "wall"
-                        if (y == mapHeight - 1 && variant.Sockets[0] != "wall") isValid = false;
-                
-                        // East edge of the map -> socket East must be "wall"
-                        if (x == mapWidth - 1 && variant.Sockets[1] != "wall") isValid = false;
-                
-                        // South edge of the map -> socket South must be "wall"
-                        if (y == 0 && variant.Sockets[2] != "wall") isValid = false;
-                
-                        // West edge of the map -> socket West must be "wall"
-                        if (x == 0 && variant.Sockets[3] != "wall") isValid = false;
+                        Cell cell = grid[x, y, z];
+                        List<TileVariant> toRemove = new List<TileVariant>();
 
-                        if (!isValid)
+                        foreach (var variant in cell.AvailableVariants)
                         {
-                            toRemove.Add(variant);
-                        }
-                    }
+                            bool isValid = true;
+                            
+                            // Borders on X and Z axis must be solid
+                            if (z == mapDepth - 1 && variant.Sockets[0] != "wall") isValid = false;
+                            if (x == mapWidth - 1 && variant.Sockets[1] != "wall") isValid = false;
+                            if (z == 0 && variant.Sockets[2] != "wall") isValid = false;
+                            if (x == 0 && variant.Sockets[3] != "wall") isValid = false;
+                            
+                            // Borders on Y axis must be solid - bottom floor and upper floor ceiling
+                            if (y == mapFloors - 1 && variant.Sockets[4] != "wall") isValid = false; // UP limit
+                            if (y == 0 && variant.Sockets[5] != "wall") isValid = false; // DOWN limit
 
-                    // Remove invalid variants
-                    foreach (var variant in toRemove)
-                    {
-                        cell.AvailableVariants.Remove(variant);
+                            if (!isValid) toRemove.Add(variant);
+                        }
+
+                        foreach (var variant in toRemove) cell.AvailableVariants.Remove(variant);
                     }
                 }
             }
@@ -476,7 +521,7 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             if (cell.CollapsedVariant != null)
             {
-                Vector3 pos = new Vector3(cell.GridPosition.x * tileSize, 0, cell.GridPosition.y * tileSize);
+                Vector3 pos = new Vector3(cell.GridPosition.x * tileSize, cell.GridPosition.y * tileSize, cell.GridPosition.z * tileSize);
                 Quaternion rot = Quaternion.Euler(0, cell.CollapsedVariant.Rotation * 90, 0);
                 Instantiate(cell.CollapsedVariant.Data.prefab, pos, rot, transform);
             }
