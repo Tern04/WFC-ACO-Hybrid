@@ -6,7 +6,7 @@ namespace _Project.Scripts.MapGeneration.Core
 {
     public class Cell
     {
-        public Vector2Int GridPosition; // Position of the cell in the grid
+        public Vector3Int GridPosition; // Position of the cell in the grid
         public bool IsCollapsed; // Indicates whether the cell has been collapsed to a single tile or not
 
         public List<TileVariant> AvailableVariants; // List of possible tiles that can still be placed in this cell based on the WFC constraints
@@ -19,7 +19,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// </summary>
         /// <param name="pos">Position on the grid</param>
         /// <param name="allVariants">List of tile variants</param>
-        public Cell(Vector2Int pos, List<TileVariant> allVariants)
+        public Cell(Vector3Int pos, List<TileVariant> allVariants)
         {
             GridPosition = pos;
             IsCollapsed = false;
