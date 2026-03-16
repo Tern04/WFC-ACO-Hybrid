@@ -462,7 +462,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::_Project.Scripts.MapGeneration.Core.MapGenerator
   mapWidth: 10
-  mapFloors: 2
+  mapFloors: 5
   mapDepth: 10
   tileSize: 20
   allAvailableTiles:
@@ -529,7 +529,7 @@ MonoBehaviour:
   gravity: -9.81
   jumpBufferTime: 0.15
   coyoteTime: 0.1
-  lookSpeed: 0.1
+  lookSpeed: 0.2
   playerCamera: {fileID: 330585546}
 --- !u!143 &2146765890
 CharacterController:
