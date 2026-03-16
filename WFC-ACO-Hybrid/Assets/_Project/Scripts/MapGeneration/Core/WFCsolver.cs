@@ -1,0 +1,304 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using _Project.Scripts.MapGeneration.Data;
+
+namespace _Project.Scripts.MapGeneration.Core
+{
+    public class WFCSolver
+    {
+        private Cell[,,] grid;
+        private int mapWidth;
+        private int mapFloors;
+        private int mapDepth;
+
+        /// <summary>
+        /// Constructor for the WFCSolver class.
+        /// Initializes the solver with the grid, width, floors, and depth of the map.
+        /// </summary>
+        /// <param name="grid">The 3D grid of cells representing the map</param>
+        /// <param name="width">Width of the map</param>
+        /// <param name="floors">Number of floors in the map</param>
+        /// <param name="depth">Depth of the map</param>
+        public WFCSolver(Cell[,,] grid, int width, int floors, int depth)
+        {
+            this.grid = grid;
+            this.mapWidth = width;
+            this.mapFloors = floors;
+            this.mapDepth = depth;
+        }
+
+        /// <summary>
+        /// Applies boundary constraints to the map by removing any tile variants that would
+        /// violate the solid wall requirement on the edges of the map.
+        /// </summary>
+        public void ApplyBoundaryConstraints()
+        {
+            for (int x = 0; x < mapWidth; x++)
+            {
+                for (int y = 0; y < mapFloors; y++)
+                {
+                    for (int z = 0; z < mapDepth; z++)
+                    {
+                        Cell cell = grid[x, y, z];
+                        List<TileVariant> toRemove = new List<TileVariant>();
+
+                        foreach (var variant in cell.AvailableVariants)
+                        {
+                            bool isValid = true;
+                            
+                            // Borders on X and Z axis must be solid
+                            if (z == mapDepth - 1 && variant.Sockets[0] != "wall") isValid = false;
+                            if (x == mapWidth - 1 && variant.Sockets[1] != "wall") isValid = false;
+                            if (z == 0 && variant.Sockets[2] != "wall") isValid = false;
+                            if (x == 0 && variant.Sockets[3] != "wall") isValid = false;
+                            
+                            // Borders on Y axis must be solid - bottom floor and upper floor ceiling
+                            if (y == mapFloors - 1 && variant.Sockets[4] != "wall") isValid = false; // UP limit
+                            if (y == 0 && variant.Sockets[5] != "wall") isValid = false; // DOWN limit
+
+                            if (!isValid) toRemove.Add(variant);
+                        }
+
+                        foreach (var variant in toRemove)
+                        {
+                            cell.AvailableVariants.Remove(variant);
+                        }
+                        
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Force the solver to collapse a cell to a specific variant.
+        /// Used for setting start and finish tiles.
+        /// </summary>
+        public void ForceCollapse(Cell cell, List<TileVariant> allowedVariants)
+        {
+            cell.AvailableVariants = allowedVariants;
+            CollapseCell(cell);
+            Propagate(cell);
+        }
+
+        /// <summary>
+        /// Main WFC algorithm.
+        /// It repeatedly collapses the cell with the lowest entropy and propagates the constraints
+        /// until the map is fully collapsed or a failure occurs (no valid variants for a cell).
+        /// </summary>
+        /// <returns>True if the map was successfully generated, false if a failure occurred.</returns>
+        public bool RunWFC()
+        {
+            while (!IsFullyCollapsed())
+            {
+                Cell nextCell = GetCellWithLowestEntropy();
+                
+                if (nextCell == null || nextCell.Entropy == 0)
+                {
+                    return false; // Failure - no cell to collapse or a cell with no valid variants
+                }
+
+                CollapseCell(nextCell);
+                Propagate(nextCell);
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Animated version of the WFC algorithm.
+        /// It collapses one cell at a time and yields after each collapse to allow for visualization.
+        /// </summary>
+        /// <param name="onCellCollapsed">Callback function allowing for visualization of the process.</param>
+        /// <returns></returns>
+        public IEnumerator RunWFCAnimated(System.Action<Cell> onCellCollapsed)
+        {
+            while (!IsFullyCollapsed())
+            {
+                Cell nextCell = GetCellWithLowestEntropy();
+        
+                if (nextCell == null || nextCell.Entropy == 0)
+                {
+                    Debug.LogWarning("Map generation failed.");
+                    yield break; 
+                }
+
+                CollapseCell(nextCell);
+                Propagate(nextCell);
+                
+                onCellCollapsed?.Invoke(nextCell); // Draw the newly collapsed cell
+                yield return new WaitForSeconds(0.05f);
+            }
+        }
+
+        /// <summary>
+        /// Checks if the map is fully collapsed.
+        /// </summary>
+        /// <returns>True if the map is fully collapsed, false otherwise</returns>
+        private bool IsFullyCollapsed()
+        {
+            foreach (var cell in grid)
+            {
+                if (!cell.IsCollapsed)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Returns the cell with the lowest entropy.
+        /// </summary>
+        /// <returns>Cell with the lowest entropy</returns>
+        private Cell GetCellWithLowestEntropy()
+        {
+            Cell bestCell = null;
+            int lowestEntropy = int.MaxValue;
+
+            for (int x = 0; x < mapWidth; x++)
+            {
+                for (int y = 0; y < mapFloors; y++)
+                {
+                    for (int z = 0; z < mapDepth; z++)
+                    {
+                        Cell cell = grid[x, y, z];
+                        if (!cell.IsCollapsed && cell.Entropy < lowestEntropy)
+                        {
+                            lowestEntropy = cell.Entropy;
+                            bestCell = cell;
+                        }
+                    }
+                }
+            }
+            return bestCell;
+        }
+
+        /// <summary>
+        /// Collapses a cell by choosing a random variant from its available variants.
+        /// </summary>
+        /// <param name="cell">Cell to be collapsed</param>
+        private void CollapseCell(Cell cell)
+        {
+            int randomIndex = Random.Range(0, cell.AvailableVariants.Count);
+            cell.CollapsedVariant = cell.AvailableVariants[randomIndex];
+            cell.AvailableVariants.Clear();
+            cell.AvailableVariants.Add(cell.CollapsedVariant);
+            cell.IsCollapsed = true;
+        }
+
+        /// <summary>
+        /// Propagates the collapsed cell's variant to its neighboring cells.'
+        /// </summary>
+        /// <param name="collapsedCell">Collapsed cell</param>
+        private void Propagate(Cell collapsedCell)
+        {
+            Stack<Cell> stack = new Stack<Cell>();
+            stack.Push(collapsedCell);
+            
+            // Check all 6 directions
+            Vector3Int[] directions = { 
+                new Vector3Int(0, 0, 1),    // North - 0
+                new Vector3Int(1, 0, 0),    // East - 1
+                new Vector3Int(0, 0, -1),   // South - 2
+                new Vector3Int(-1, 0, 0),   // West - 3
+                new Vector3Int(0, 1, 0),    // Up - 4
+                new Vector3Int(0, -1, 0)    // Down - 5
+            };
+
+            while (stack.Count > 0)
+            {
+                Cell current = stack.Pop();
+
+                for (int i = 0; i < 6; i++)
+                {
+                    Vector3Int nPos = current.GridPosition + directions[i];
+                    
+                    // Check if the neighbor is within the map bounds
+                    if (nPos.x >= 0 && nPos.x < mapWidth && 
+                        nPos.y >= 0 && nPos.y < mapFloors && 
+                        nPos.z >= 0 && nPos.z < mapDepth)
+                    {
+                        Cell neighbor = grid[nPos.x, nPos.y, nPos.z];
+                        
+                        if (neighbor.IsCollapsed)
+                        {
+                            continue;
+                        }
+                        
+                        // Check if the neighbor's variant is compatible with the current cell's variant
+                        bool changed = ConstrainNeighbor(current, neighbor, i);
+
+                        if (changed)
+                        {
+                            stack.Push(neighbor);
+                        }
+                        
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reduces the possible tile variants for the neighbor Cell by enforcing socket compatibility
+        /// </summary>
+        /// <param name="current">The current Cell that is influencing its neighbor.</param>
+        /// <param name="neighbor">The neighboring Cell whose available variants are being constrained.</param>
+        /// <param name="directionIndex">The direction from the current Cell to the neighbor Cell</param>
+        /// <returns>
+        /// Returns true if the neighbor's list of possible variants has changed, otherwise false.
+        /// </returns>
+        private bool ConstrainNeighbor(Cell current, Cell neighbor, int directionIndex)
+        {
+            bool changed = false;
+            // directionIndex: 0:N, 1:E, 2:S, 3:W
+            int neighborSideIndex = GetOppositeSide(directionIndex);
+
+            List<TileVariant> toRemove = new List<TileVariant>();
+
+            foreach (var neighborVariant in neighbor.AvailableVariants)
+            {
+                bool possible = false;
+                foreach (var currentVariant in current.AvailableVariants)
+                {
+                    // Check for socket compatibility
+                    if (currentVariant.Sockets[directionIndex] == neighborVariant.Sockets[neighborSideIndex])
+                    {
+                        possible = true;
+                        break;
+                    }
+                }
+
+                if (!possible)
+                {
+                    toRemove.Add(neighborVariant);
+                    changed = true;
+                }
+            }
+
+            foreach (var variant in toRemove)
+            {
+                neighbor.AvailableVariants.Remove(variant);
+            }
+
+            return changed;
+        }
+        
+        /// <summary>
+        /// Returns the opposite side of a direction index.
+        /// </summary>
+        /// <param name="directionIndex">Index of the direction North, South, ...</param>
+        /// <returns></returns>
+        private int GetOppositeSide(int directionIndex)
+        {
+            switch (directionIndex)
+            {
+                case < 4:
+                    return (directionIndex + 2) % 4; // North -> South, East -> West...
+                case 4:
+                    return 5; // Up -> Down
+                default:
+                    return 4; // Down -> Up
+            }
+        }
+    }
+}
