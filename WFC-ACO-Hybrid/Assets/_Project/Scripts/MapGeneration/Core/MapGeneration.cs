@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq; 
@@ -21,6 +22,9 @@ namespace _Project.Scripts.MapGeneration.Core
         [Header("Special Tiles")]
         public TileData startTileData;
         public TileData finishTileData;
+        
+        [Header("Visualization")]
+        public Material mainPathMaterial;
 
         private Cell[,,] grid; // 2D array representing the map
         private List<TileVariant> standardVariants; // List of all possible tile variants
@@ -34,8 +38,8 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             InitializeGrid(); 
             //RunWFC();
-            StartCoroutine(GenerateAnimatedMap());
-            //GenerateValidMap();
+            StartCoroutine(GenerateDFSHybridAnimated());
+            //GenerateValidDFSMap();
         }
 
         /// <summary>
@@ -126,16 +130,21 @@ namespace _Project.Scripts.MapGeneration.Core
         }
 
         /// <summary>
-        /// Generates a valid map by repeatedly running the WFC algorithm until a valid map is found.
+        /// Generates a valid map by repeatedly running the hybrid DFS algorithm until a valid map is found.
         /// Iterates up to a maximum number of attempts to prevent infinite loops.
-        /// After a valid map is generated, the tiles are instantiated in the scene.
+        /// Uses DFS to guide the WFC process and visualizes the generation after the generation.
+        /// Time and path length are measured for comparison.
         /// </summary>
-        private void GenerateValidMap()
+        private void GenerateValidDFSMap()
         {
             int attempts = 0;
             bool success = false;
+            int maxAttempts = CalculateMaxAttempts(); 
+            
+            // Start runtime measurement for generation performance evaluation.
+            float startTime = Time.realtimeSinceStartup;
 
-            while (!success && attempts < 200)
+            while (!success && attempts < maxAttempts)
             {
                 attempts++;
                 ClearScene();
@@ -144,56 +153,101 @@ namespace _Project.Scripts.MapGeneration.Core
                 WFCSolver solver = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
                 solver.ApplyBoundaryConstraints();
                 SetStartAndFinish(solver);
-
-
-                bool wfcSuccess = solver.RunWFC();
-
-                if (wfcSuccess)
-                {
-                    PathValidator validator = new PathValidator(grid, mapWidth, mapFloors, mapDepth);
-
-                    if (validator.IsPathPossibleDFS(new Vector3Int(0, 0, 0),
-                            new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1)))
-                    {
-                        success = true;
-                        Debug.Log($"Valid map generated after {attempts} attempts.");
-                        InstantiateTiles();
-                    }
-                }
                 
+                DFSHybridSolver dfsSolver = new DFSHybridSolver(grid, mapWidth, mapFloors, mapDepth, solver);
+
+                Vector3Int startPos = new Vector3Int(0, 0, 0);
+                Vector3Int endPos = new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1);
+
+                // Retrieve the explicit DFS backbone path as an ordered sequence of grid coordinates.
+                List<Vector3Int> builtPath = dfsSolver.RunDFSHybrid(startPos, endPos);
+
+                if (builtPath != null)
+                {
+                    // Stop measuring time after the successful computation
+                    float duration = (Time.realtimeSinceStartup - startTime) * 1000f; 
+                    success = true;
+
+                    // Output key benchmarking metrics for reproducible evaluation.
+                    Debug.Log("Valid map generated after " + attempts + " attempts.");
+                    Debug.Log("Map generation in " + duration.ToString("0.00") + " ms.");
+                    Debug.Log("Path length: " + builtPath.Count);
+
+                    // Mark the computed path for post-process visual highlighting.
+                    foreach (Vector3Int pos in builtPath)
+                    {
+                        grid[pos.x, pos.y, pos.z].isMainPath = true;
+                    }
+
+                    // Instantiate the final map tiles.
+                    InstantiateTiles();
+                }
             }
             
             if (!success)
             {
-                Debug.LogError("Failed to generate a valid map after 200 attempts.");
+                Debug.LogError("Failed to generate a valid map after " + attempts + " attempts.");
             }
-            
         }
         
         /// <summary>
-        /// Generates an animated map by running the WFC algorithm and visualizing each cell as it collapses.
+        /// Generates a valid map by repeatedly running the hybrid DFS algorithm until a valid map is found.
+        /// Iterates up to a maximum number of attempts to prevent infinite loops.
+        /// Uses DFS to guide the WFC process and visualizes the generation in real-time.
         /// </summary>
-        public IEnumerator GenerateAnimatedMap()
+        /// <returns></returns>
+        public IEnumerator GenerateDFSHybridAnimated()
         {
-            ClearScene();
-            ResetGrid();
+            int attempt = 0;
+            bool success = false;
+            int maxAttempts = CalculateMaxAttempts();
             
-            WFCSolver solver = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
-            solver.ApplyBoundaryConstraints();
-            SetStartAndFinish(solver, true); // Visualize the start and finish tiles
-            
-            // Run the WFC algorithm and visualize each cell as it collapses
-            yield return StartCoroutine(solver.RunWFCAnimated(VisualizeCell));
-            
-            PathValidator validator = new PathValidator(grid, mapWidth, mapFloors, mapDepth);
-            if (validator.IsPathPossibleDFS(new Vector3Int(0, 0, 0), new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1)))
+            while (!success && attempt < maxAttempts)
             {
-                Debug.Log("Animated map generated successfully with a valid path from start to finish.");
+                attempt++;
+                ClearScene();
+                ResetGrid();
+                
+                // Initialize the WFC solver and set the start with finish and boundary constraints
+                WFCSolver solver = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
+                solver.ApplyBoundaryConstraints();
+                SetStartAndFinish(solver, true); 
+                DFSHybridSolver dfsSolver = new DFSHybridSolver(grid, mapWidth, mapFloors, mapDepth, solver);
+
+                // Set start and finish positions in the corners of the map
+                Vector3Int startPos = new Vector3Int(0, 0, 0);
+                Vector3Int endPos = new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1);
+
+                // Run the hybrid DFS algorithm with visualization
+                yield return StartCoroutine(dfsSolver.RunDFSHybridAnimated(startPos, endPos, VisualizeCell));
+                
+                // Check if the WFC process completed successfully and if a valid path exists
+                PathValidator validator = new PathValidator(grid, mapWidth, mapFloors, mapDepth);
+                
+                if (solver.IsFullyCollapsed() && validator.IsPathPossibleDFS(startPos, endPos))
+                {
+                    Debug.Log("Valid map generated after" + attempt + " attempts.");
+                    success = true;
+                }
+                else
+                {
+                    Debug.LogWarning("Attempt number" + attempt +" failed.)");
+                    yield return new WaitForSeconds(0.5f); // Wait before retrying
+                }
             }
-            else
-            {
-                Debug.LogWarning("Did not find a valid path from start to finish.");
-            }
+        }
+
+        /// <summary>
+        /// Calculates the maximum number of generation attempts based on the map size.
+        /// </summary>
+        /// <returns>Maximum number of attempts</returns>
+        private int CalculateMaxAttempts()
+        {
+            int totalCells = mapWidth * mapFloors * mapDepth;
+
+            int maxAttempts = 20 + (totalCells / 2);
+            
+            return Math.Clamp(maxAttempts, 20, 500); // Clamp between 20 and 500 attempts
         }
 
         /// <summary>
@@ -218,12 +272,49 @@ namespace _Project.Scripts.MapGeneration.Core
             {
                 if (cell.CollapsedVariant != null)
                 {
-                    Vector3 pos = new Vector3(cell.GridPosition.x * tileSize,
-                        cell.GridPosition.y * tileSize,
-                        cell.GridPosition.z * tileSize);
-                    
-                    Quaternion rot = Quaternion.Euler(0, cell.CollapsedVariant.Rotation * 90, 0);
-                    Instantiate(cell.CollapsedVariant.Data.prefab, pos, rot, transform);
+                    InstantiateCell(cell);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Instantiates a single collapsed cell and applies optional path visualization.
+        /// </summary>
+        void InstantiateCell(Cell cell)
+        {
+            Vector3 pos = new Vector3(cell.GridPosition.x * tileSize,
+                cell.GridPosition.y * tileSize,
+                cell.GridPosition.z * tileSize);
+
+            Quaternion rot = Quaternion.Euler(0, cell.CollapsedVariant.Rotation * 90, 0);
+            GameObject tileObj = Instantiate(cell.CollapsedVariant.Data.prefab, pos, rot, transform);
+
+            if (cell.isMainPath)
+            {
+                ApplyMainPathMaterial(tileObj);
+            }
+        }
+
+        /// <summary>
+        /// Applies the main path material to the floor and step objects of a tile.
+        /// </summary>
+        /// <param name="tileObj">The tile GameObject to which the material should be applied</param>
+        void ApplyMainPathMaterial(GameObject tileObj)
+        {
+            if (mainPathMaterial == null)
+            {
+                return;
+            }
+
+            MeshRenderer[] renderers = tileObj.GetComponentsInChildren<MeshRenderer>();
+
+            foreach (MeshRenderer rnd in renderers)
+            {
+                string objName = rnd.gameObject.name.ToLower();
+
+                if (objName.Contains("floor") || objName.Contains("step"))
+                {
+                    rnd.material = mainPathMaterial;
                 }
             }
         }
@@ -236,9 +327,7 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             if (cell.CollapsedVariant != null)
             {
-                Vector3 pos = new Vector3(cell.GridPosition.x * tileSize, cell.GridPosition.y * tileSize, cell.GridPosition.z * tileSize);
-                Quaternion rot = Quaternion.Euler(0, cell.CollapsedVariant.Rotation * 90, 0);
-                Instantiate(cell.CollapsedVariant.Data.prefab, pos, rot, transform);
+                InstantiateCell(cell);
             }
         }
         
