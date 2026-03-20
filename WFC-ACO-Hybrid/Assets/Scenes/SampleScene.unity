@@ -476,6 +476,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2720361808e7943bca49be713f54ed25, type: 2}
   startTileData: {fileID: 11400000, guid: ddd8675d46646490c980422d87bf5b45, type: 2}
   finishTileData: {fileID: 11400000, guid: ddd8675d46646490c980422d87bf5b45, type: 2}
+  mainPathMaterial: {fileID: 2100000, guid: 15a88ea50fec5411da95fcef1b553177, type: 2}
 --- !u!4 &900329231
 Transform:
   m_ObjectHideFlags: 0
