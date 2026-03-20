@@ -5,12 +5,16 @@ using _Project.Scripts.MapGeneration.Data;
 
 namespace _Project.Scripts.MapGeneration.Core
 {
+    /// <summary>
+    /// Class for the WFC solver.
+    /// It handles the main WFC algorithm and its constraints.
+    /// </summary>
     public class WFCSolver
     {
-        private Cell[,,] grid;
-        private int mapWidth;
-        private int mapFloors;
-        private int mapDepth;
+        private readonly Cell[,,] grid;
+        private readonly int mapWidth;
+        private readonly int mapFloors;
+        private readonly int mapDepth;
 
         /// <summary>
         /// Constructor for the WFCSolver class.
@@ -105,36 +109,10 @@ namespace _Project.Scripts.MapGeneration.Core
         }
 
         /// <summary>
-        /// Animated version of the WFC algorithm.
-        /// It collapses one cell at a time and yields after each collapse to allow for visualization.
-        /// </summary>
-        /// <param name="onCellCollapsed">Callback function allowing for visualization of the process.</param>
-        /// <returns></returns>
-        public IEnumerator RunWFCAnimated(System.Action<Cell> onCellCollapsed)
-        {
-            while (!IsFullyCollapsed())
-            {
-                Cell nextCell = GetCellWithLowestEntropy();
-        
-                if (nextCell == null || nextCell.Entropy == 0)
-                {
-                    Debug.LogWarning("Map generation failed.");
-                    yield break; 
-                }
-
-                CollapseCell(nextCell);
-                Propagate(nextCell);
-                
-                onCellCollapsed?.Invoke(nextCell); // Draw the newly collapsed cell
-                yield return new WaitForSeconds(0.05f);
-            }
-        }
-
-        /// <summary>
         /// Checks if the map is fully collapsed.
         /// </summary>
         /// <returns>True if the map is fully collapsed, false otherwise</returns>
-        private bool IsFullyCollapsed()
+        public bool IsFullyCollapsed()
         {
             foreach (var cell in grid)
             {
@@ -174,6 +152,24 @@ namespace _Project.Scripts.MapGeneration.Core
         }
 
         /// <summary>
+        /// Collapses the next lowest-entropy cell and propagates constraints.
+        /// </summary>
+        /// <param name="collapsedCell">Outputs the collapsed cell.</param>
+        /// <returns>False if a contradiction occurred or no valid cell exists.</returns>
+        public bool TryCollapseNextCell(out Cell collapsedCell)
+        {
+            collapsedCell = GetCellWithLowestEntropy();
+            if (collapsedCell == null || collapsedCell.Entropy == 0)
+            {
+                return false;
+            }
+
+            CollapseCell(collapsedCell);
+            Propagate(collapsedCell);
+            return true;
+        }
+
+        /// <summary>
         /// Collapses a cell by choosing a random variant from its available variants.
         /// </summary>
         /// <param name="cell">Cell to be collapsed</param>
@@ -184,6 +180,15 @@ namespace _Project.Scripts.MapGeneration.Core
             cell.AvailableVariants.Clear();
             cell.AvailableVariants.Add(cell.CollapsedVariant);
             cell.IsCollapsed = true;
+        }
+
+        /// <summary>
+        /// Helper for hybrid solvers that need deterministic collapse and propagation sequencing.
+        /// </summary>
+        public void CollapseAndPropagate(Cell cell)
+        {
+            CollapseCell(cell);
+            Propagate(cell);
         }
 
         /// <summary>
@@ -288,7 +293,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// </summary>
         /// <param name="directionIndex">Index of the direction North, South, ...</param>
         /// <returns></returns>
-        private int GetOppositeSide(int directionIndex)
+        public int GetOppositeSide(int directionIndex)
         {
             switch (directionIndex)
             {
@@ -300,5 +305,6 @@ namespace _Project.Scripts.MapGeneration.Core
                     return 4; // Down -> Up
             }
         }
+
     }
 }
