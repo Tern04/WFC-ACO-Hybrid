@@ -19,11 +19,24 @@ The main goal is to develop a hybrid algorithm where agent-based feedback (ACO) 
     * Wave Function Collapse (Constraint Satisfaction)
     * Ant Colony Optimization (Swarm Intelligence / Pathfinding)
 
+## Current Implementations
+
+### 1. WFC + DFS Baseline (Greedy Crawler)
+To establish a baseline for comparison, a hybrid algorithm combining WFC with a Depth-First Search (DFS) agent was implemented. 
+
+**Principle of Operation:**
+* **Navigation:** The agent navigates the discrete grid step-by-step, utilizing a Greedy heuristic to move towards the goal.
+* **Local WFC Intervention:** Instead of walking on a pre-generated map, the agent actively builds it. Upon stepping into a new uncollapsed cell, it forces a local WFC collapse, restricting the tile selection to pieces that provide a valid exit.
+* **Propagation:** Every local collapse triggers WFC propagation to maintain stability in the surrounding grid (e.g., building walls around corners).
+* **Iterative Restart:** Due to the stochastic nature of WFC tile selection, the agent might be forced into building a dead-end. The algorithm utilizes an iterative restart mechanism to discard invalid states and ensure a 100% valid output.
+
 ## Project Status & Roadmap
 
 - [x] Initial Research & Literature Review
 - [x] Repository Setup & Environment Configuration
-- [ ] Core WFC Implementation (C#)
+- [x] Core WFC Implementation (C#)
+- [x] WFC + DFS Baseline & Validation (Performance benchmarking)
+- [ ] Optimization (Priority Queue for Entropy, execution time improvements)
 - [ ] ACO Integration & Feedback Loop
 - [ ] Comparison Framework & Data Collection
 - [ ] Final Documentation
