@@ -1,10 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq; 
 using UnityEngine;
 using _Project.Scripts.MapGeneration.Data;
 using _Project.Scripts.Pathfinding;
+using _Project.Scripts.Utils;
+using Debug = UnityEngine.Debug;
 
 namespace _Project.Scripts.MapGeneration.Core
 {
@@ -38,8 +41,9 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             InitializeGrid(); 
             //RunWFC();
-            StartCoroutine(GenerateDFSHybridAnimated());
+            //StartCoroutine(GenerateDFSHybridAnimated());
             //GenerateValidDFSMap();
+            RunWFCBenchmark();
         }
 
         /// <summary>
@@ -329,6 +333,60 @@ namespace _Project.Scripts.MapGeneration.Core
             {
                 InstantiateCell(cell);
             }
+        }
+        
+        /// <summary>
+        /// Configures and triggers the automated performance evaluation for the baseline WFC algorithm.
+        /// </summary>
+        private void RunWFCBenchmark()
+        {
+            // Define the grid sizes to test
+            Vector3Int[] testSizes = new Vector3Int[]
+            {
+                new Vector3Int(10, 3, 10),
+                new Vector3Int(15, 3, 15),
+                new Vector3Int(20, 4, 20),
+                new Vector3Int(25, 4, 25),
+                new Vector3Int(30, 5, 30)
+            };
+
+            // Delegate the execution to the BenchmarkUtils class
+            EntropyBenchmark.RunBenchmark("WFC_Naive_Entropy.csv", 100, testSizes, RunSingleBenchmarkCycle);
+        }
+
+        /// <summary>
+        /// Callback method invoked by BenchmarkUtils for each test iteration.
+        /// Executes the generation algorithm and measures hardware-level execution time.
+        /// </summary>
+        /// <param name="size">Target grid dimensions for the current iteration</param>
+        /// <returns>Execution time in milliseconds.</returns>
+        private (double totalTime, double entropyTime) RunSingleBenchmarkCycle(Vector3Int size)
+        {
+            // Grid configuration
+            mapWidth = size.x;
+            mapFloors = size.y;
+            mapDepth = size.z;
+
+            // Environment reset and constraints initialization
+            ClearScene();
+            ResetGrid();
+        
+            WFCSolver solver = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
+            solver.ApplyBoundaryConstraints();
+            SetStartAndFinish(solver);
+
+            // Performance measurement
+            Stopwatch sw = Stopwatch.StartNew();
+        
+            // Target algorithm execution
+            solver.RunWFC(); 
+        
+            sw.Stop();
+            
+            double totalTime = sw.Elapsed.TotalMilliseconds;
+            double entropyTime = solver.LastEntropySearchTimeMs;
+        
+            return (totalTime, entropyTime);
         }
         
     }
