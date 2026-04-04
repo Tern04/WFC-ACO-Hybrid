@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 using _Project.Scripts.MapGeneration.Data;
 
@@ -15,6 +16,11 @@ namespace _Project.Scripts.MapGeneration.Core
         private readonly int mapWidth;
         private readonly int mapFloors;
         private readonly int mapDepth;
+        
+        /// <summary>
+        /// Property exposing the execution time spent exclusively in the entropy search phase during the last run.
+        /// </summary>
+        public double LastEntropySearchTimeMs { get; private set; }
 
         /// <summary>
         /// Constructor for the WFCSolver class.
@@ -93,9 +99,15 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <returns>True if the map was successfully generated, false if a failure occurred.</returns>
         public bool RunWFC()
         {
+            
+            Stopwatch entropyStopwatch = new Stopwatch();
+            LastEntropySearchTimeMs = 0;
+            
             while (!IsFullyCollapsed())
             {
-                Cell nextCell = GetCellWithLowestEntropy();
+                entropyStopwatch.Start();
+                Cell nextCell = GetCellWithLowestEntropyNaive();
+                entropyStopwatch.Stop();
                 
                 if (nextCell == null || nextCell.Entropy == 0)
                 {
@@ -105,6 +117,8 @@ namespace _Project.Scripts.MapGeneration.Core
                 CollapseCell(nextCell);
                 Propagate(nextCell);
             }
+            
+            LastEntropySearchTimeMs = entropyStopwatch.ElapsedMilliseconds;
             return true;
         }
 
@@ -128,7 +142,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// Returns the cell with the lowest entropy.
         /// </summary>
         /// <returns>Cell with the lowest entropy</returns>
-        private Cell GetCellWithLowestEntropy()
+        private Cell GetCellWithLowestEntropyNaive()
         {
             Cell bestCell = null;
             int lowestEntropy = int.MaxValue;
@@ -158,7 +172,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <returns>False if a contradiction occurred or no valid cell exists.</returns>
         public bool TryCollapseNextCell(out Cell collapsedCell)
         {
-            collapsedCell = GetCellWithLowestEntropy();
+            collapsedCell = GetCellWithLowestEntropyNaive();
             if (collapsedCell == null || collapsedCell.Entropy == 0)
             {
                 return false;

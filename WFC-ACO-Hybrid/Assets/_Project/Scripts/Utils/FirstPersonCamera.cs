@@ -16,7 +16,7 @@ namespace _Project.Scripts.Utils
 
         [Header("Mouse Look Settings")]
         public float lookSpeed = 0.1f;
-        public Transform playerCamera; // Sem v Inspectoru přetáhneš svou Main Camera
+        public Transform playerCamera; 
 
         private CharacterController controller;
         private Vector3 velocity;
