@@ -17,6 +17,8 @@ namespace _Project.Scripts.MapGeneration.Core
         private readonly int mapFloors;
         private readonly int mapDepth;
         
+        private readonly CellMinHeap entropyHeap; // Min-heap for entropy-based priority queue
+        
         /// <summary>
         /// Property exposing the execution time spent exclusively in the entropy search phase during the last run.
         /// </summary>
@@ -36,6 +38,23 @@ namespace _Project.Scripts.MapGeneration.Core
             this.mapWidth = width;
             this.mapFloors = floors;
             this.mapDepth = depth;
+            
+            this.entropyHeap = new CellMinHeap();
+            InitializeEntropyHeap();
+        }
+
+        private void InitializeEntropyHeap()
+        {
+            entropyHeap.Clear();
+            foreach (var cell in grid)
+            {
+                if (cell.IsCollapsed)
+                {
+                    continue;
+                }
+                
+                entropyHeap.Enqueue(cell, cell.Entropy);
+            }
         }
 
         /// <summary>
@@ -106,7 +125,7 @@ namespace _Project.Scripts.MapGeneration.Core
             while (!IsFullyCollapsed())
             {
                 entropyStopwatch.Start();
-                Cell nextCell = GetCellWithLowestEntropyNaive();
+                Cell nextCell = GetCellWithLowestEntropyHeap();
                 entropyStopwatch.Stop();
                 
                 if (nextCell == null || nextCell.Entropy == 0)
@@ -164,6 +183,46 @@ namespace _Project.Scripts.MapGeneration.Core
             }
             return bestCell;
         }
+        
+        /// <summary>
+        /// Retrieves the cell with the lowest entropy from the min-heap.
+        /// Actively discards stale and ghost references.
+        /// </summary>
+        /// <returns>The optimal uncollapsed Cell, or null if generation is complete.</returns>
+        private Cell GetCellWithLowestEntropyHeap()
+        {
+            while (entropyHeap.Count > 0)
+            {
+                var node = entropyHeap.Dequeue();
+                Cell cell = node.cell;
+                int storedPriority = node.priority;
+                
+                // Check for collapsed cells or ghost entries
+                if (cell.IsCollapsed || cell.Entropy != storedPriority)
+                {
+                    continue;
+                }
+
+                // Valid uncollapsed cell with available variants found
+                if (cell.Entropy > 0)
+                {
+                    return cell;
+                }
+            }
+            
+            return null; 
+        }
+        
+        /// <summary>
+        /// Re-enqueues a cell into the heap when its entropy is reduced during propagation.
+        /// </summary>
+        private void UpdateCellEntropyInHeap(Cell cell)
+        {
+            if (!cell.IsCollapsed && cell.Entropy > 0)
+            {
+                entropyHeap.Enqueue(cell, cell.Entropy);
+            }
+        }
 
         /// <summary>
         /// Collapses the next lowest-entropy cell and propagates constraints.
@@ -172,7 +231,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <returns>False if a contradiction occurred or no valid cell exists.</returns>
         public bool TryCollapseNextCell(out Cell collapsedCell)
         {
-            collapsedCell = GetCellWithLowestEntropyNaive();
+            collapsedCell = GetCellWithLowestEntropyHeap();
             if (collapsedCell == null || collapsedCell.Entropy == 0)
             {
                 return false;
@@ -250,6 +309,12 @@ namespace _Project.Scripts.MapGeneration.Core
                         if (changed)
                         {
                             stack.Push(neighbor);
+                            
+                            // Re-enqueue the neighbor in the heap to update its priority based on the new entropy
+                            if (!neighbor.IsCollapsed)
+                            {
+                                UpdateCellEntropyInHeap(neighbor);
+                            }
                         }
                         
                     }
