@@ -351,7 +351,7 @@ namespace _Project.Scripts.MapGeneration.Core
             };
 
             // Delegate the execution to the BenchmarkUtils class
-            EntropyBenchmark.RunBenchmark("WFC_Naive_Entropy.csv", 100, testSizes, RunSingleBenchmarkCycle);
+            EntropyBenchmark.RunBenchmark("WFC_Heap_Entropy.csv", 100, testSizes, RunSingleBenchmarkCycle);
         }
 
         /// <summary>
