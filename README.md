@@ -57,5 +57,26 @@ The initial naive implementation utilizes a linear $O(N)$ search to find the cel
 
 **Observation:** While the cell count from a $25 \times 4 \times 25$ grid to a $30 \times 5 \times 30$ grid increases by a factor of **1.8**, the isolated entropy search execution time increases by a factor of **3.14**. At 4,500 cells, the linear search function alone consumes over 30% of the entire CPU execution time. This benchmark serves as the foundation for the upcoming Min-Heap (Priority Queue) architectural optimization.
 
+## Performance Profiling: Min-Heap Optimization
+
+To eliminate the computational bottleneck observed in the naive approach, the $O(N)$ linear search was replaced with a custom **Min-Heap (Priority Queue)** data structure. 
+
+To handle the dynamic nature of WFC (where a cell's entropy decreases as constraints propagate) without incurring an $O(N)$ penalty to search and update the heap, the implementation utilizes a **Lazy Deletion** strategy. Cells are enqueued as static tuples `(Cell, priority_at_insertion)`. When extracting the minimum value, the algorithm verifies if the stored priority matches the cell's current entropy. Stale or "ghost" references are discarded in $O(1)$ time, strictly maintaining the $O(\log N)$ operational complexity for valid extractions.
+
+| Grid Size | Cell Count | Avg Total (ms) | Avg Entropy Search (ms) | Entropy Share (%) | Max Total Time (ms) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **10x3x10** | 300 | 9.61 | 0.00 | ~ 0.00 % | 10.39 |
+| **15x3x15** | 675 | 24.06 | 0.00 | ~ 0.00 % | 31.63 |
+| **20x4x20** | 1,600 | 67.78 | 0.00 | ~ 0.00 % | 77.18 |
+| **25x4x25** | 2,500 | 108.70 | 0.99 | 0.91 % | 118.98 |
+| **30x5x30** | 4,500 | 212.44 | 1.99 | 0.93 % | 222.62 |
+
+**Conclusion & Comparison:** The transition to an $O(\log N)$ search complexity successfully neutralized the exponential scaling issue. On the largest tested grid (4,500 cells):
+1. **Target Acceleration:** The isolated entropy search time plummeted from **81.59 ms to 1.99 ms** (an approximate 40x speedup).
+2. **Bottleneck Elimination:** The selection phase, which previously consumed over 30% of the total execution time, was reduced to a marginal **0.93%**.
+3. **Worst-Case Stability:** The structural integrity of the tuple-based Min-Heap entirely eliminated execution spikes, reducing the maximum execution time (Worst-Case) from 306.09 ms to 222.62 ms.
+
+*Note: All final benchmarks were executed under the same conditions on MacBook Air with Apple M2 CPU.*
+
 ---
 *This project is being developed as a Bachelor's Thesis at Faculty of Applied Sciences - University of West Bohemia*
