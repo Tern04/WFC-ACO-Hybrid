@@ -41,9 +41,9 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             InitializeGrid(); 
             //RunWFC();
-            //StartCoroutine(GenerateDFSHybridAnimated());
+            StartCoroutine(GenerateDFSHybridAnimated());
             //GenerateValidDFSMap();
-            RunWFCBenchmark();
+            //RunWFCBenchmark();
         }
 
         /// <summary>
