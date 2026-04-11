@@ -25,7 +25,7 @@ The main goal is to develop a hybrid algorithm where agent-based feedback (ACO) 
 - [x] Repository Setup & Environment Configuration
 - [x] Core WFC Implementation (C#)
 - [x] WFC + DFS Baseline & Validation (Performance benchmarking)
-- [ ] Optimization (Priority Queue for Entropy, execution time improvements)
+- [x] Optimization (Priority Queue for Entropy, execution time improvements)
 - [ ] ACO Integration & Feedback Loop
 - [ ] Comparison Framework & Data Collection
 - [ ] Final Documentation
