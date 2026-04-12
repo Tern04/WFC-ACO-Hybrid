@@ -133,7 +133,8 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <returns>True if the map was successfully generated, false if a failure occurred.</returns>
         public bool RunWFC()
         {
-            
+            // Reset the contradiction flag and initialize the stopwatch for measuring entropy search time
+            contradictionFound = false;
             Stopwatch entropyStopwatch = new Stopwatch();
             LastEntropySearchTimeMs = 0;
             
