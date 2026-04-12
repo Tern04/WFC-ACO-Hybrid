@@ -12,6 +12,7 @@ namespace _Project.Scripts.MapGeneration.Core
     /// </summary>
     public class WFCSolver
     {
+        // Map dimensions and grid
         private readonly Cell[,,] grid;
         private readonly int mapWidth;
         private readonly int mapFloors;
@@ -24,6 +25,11 @@ namespace _Project.Scripts.MapGeneration.Core
         private readonly Stack<int> snapshotMarkers = new Stack<int>();
         
         private readonly CellMinHeap entropyHeap; // Min-heap for entropy-based priority queue
+        
+        // Flags for solver state
+        private bool contradictionFound = false;
+        
+        public bool HasContradiction => contradictionFound;
         
         /// <summary>
         /// Property exposing the execution time spent exclusively in the entropy search phase during the last run.
@@ -49,6 +55,9 @@ namespace _Project.Scripts.MapGeneration.Core
             InitializeEntropyHeap();
         }
 
+        /// <summary>
+        /// Initializes the entropy heap with all cells and their entropy values.
+        /// </summary>
         private void InitializeEntropyHeap()
         {
             entropyHeap.Clear();
@@ -303,7 +312,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 new Vector3Int(0, -1, 0)    // Down - 5
             };
 
-            while (stack.Count > 0)
+            while (stack.Count > 0 && !contradictionFound)
             {
                 Cell current = stack.Pop();
 
@@ -447,23 +456,11 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             cell.AvailableVariants.Remove(variant);
             removalHistory.Push((cell, variant));
-        }
 
-        /// <summary>
-        /// Check if the map has a contradiction.
-        /// </summary>
-        /// <returns></returns>
-        public bool HasContradiction()
-        {
-            foreach (var cell in grid)
+            if (cell.AvailableVariants.Count == 0)
             {
-                if (!cell.IsCollapsed && cell.AvailableVariants.Count == 0)
-                {
-                    return true;
-                }
+                contradictionFound = true;
             }
-
-            return false;
         }
 
     }
