@@ -17,6 +17,12 @@ namespace _Project.Scripts.MapGeneration.Core
         private readonly int mapFloors;
         private readonly int mapDepth;
         
+        //History of removed variants for backtracking
+        private readonly Stack<(Cell cell, TileVariant removedVariant)> removalHistory = new Stack<(Cell cell, TileVariant removedVariant)>();
+        
+        // Stack of snapshot markers for backtracking
+        private readonly Stack<int> snapshotMarkers = new Stack<int>();
+        
         private readonly CellMinHeap entropyHeap; // Min-heap for entropy-based priority queue
         
         /// <summary>
@@ -250,8 +256,22 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             int randomIndex = Random.Range(0, cell.AvailableVariants.Count);
             cell.CollapsedVariant = cell.AvailableVariants[randomIndex];
-            cell.AvailableVariants.Clear();
-            cell.AvailableVariants.Add(cell.CollapsedVariant);
+            
+            List<TileVariant> toRemove = new List<TileVariant>();
+
+            foreach (var variant in cell.AvailableVariants)
+            {
+                if (variant != cell.CollapsedVariant)
+                {
+                    toRemove.Add(variant);
+                }
+            }
+
+            foreach (var variant in toRemove)
+            {
+                RemoveVariantFromCell(cell, variant);
+            }
+            
             cell.IsCollapsed = true;
         }
 
@@ -361,7 +381,7 @@ namespace _Project.Scripts.MapGeneration.Core
 
             foreach (var variant in toRemove)
             {
-                neighbor.AvailableVariants.Remove(variant);
+                RemoveVariantFromCell(neighbor, variant);
             }
 
             return changed;
@@ -383,6 +403,67 @@ namespace _Project.Scripts.MapGeneration.Core
                 default:
                     return 4; // Down -> Up
             }
+        }
+
+        /// <summary>
+        /// Saves the current state of the solver - the number of removed variants.
+        /// </summary>
+        public void SaveSnapshot()
+        {
+            snapshotMarkers.Push(removalHistory.Count);
+        }
+
+        /// <summary>
+        /// Restores the removed variant from stack to the last saved snapshot.
+        /// </summary>
+        public void RestoreSnapshot()
+        {
+            if (snapshotMarkers.Count == 0)
+            {
+                return;
+            }
+            
+            int targetHistorySize = snapshotMarkers.Pop();
+
+            while (removalHistory.Count > targetHistorySize)
+            {
+                var record = removalHistory.Pop();
+                
+                // Add the removed variant back to the cell's available variants
+                record.cell.AvailableVariants.Add(record.removedVariant);
+                
+                // Reset the cell's collapsed variant to null
+                record.cell.IsCollapsed = false;
+                record.cell.CollapsedVariant = null;
+            }
+        }
+
+        /// <summary>
+        /// Removes a variant from a cell's available variants.
+        /// </summary>
+        /// <param name="cell">The cell from which the variant is being removed.</param>
+        /// <param name="variant">The tile variant that is being removed from the cell's available variants.</param>
+        private void RemoveVariantFromCell(Cell cell, TileVariant variant)
+        {
+            cell.AvailableVariants.Remove(variant);
+            removalHistory.Push((cell, variant));
+        }
+
+        /// <summary>
+        /// Check if the map has a contradiction.
+        /// </summary>
+        /// <returns></returns>
+        public bool HasContradiction()
+        {
+            foreach (var cell in grid)
+            {
+                if (!cell.IsCollapsed && cell.AvailableVariants.Count == 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
     }
