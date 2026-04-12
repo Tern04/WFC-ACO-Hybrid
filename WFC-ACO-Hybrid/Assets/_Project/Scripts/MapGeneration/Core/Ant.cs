@@ -116,7 +116,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 
                 // Calculation of the heuristic (Eta) based on the distance to the target.
                 // Adding 0.1f to avoid division by zero
-                float distance = Vector3Int.Distance(n, endPos);
+                float distance = Mathf.Abs(n.x - endPos.x) + Mathf.Abs(n.y - endPos.y) + Mathf.Abs(n.z - endPos.z);
                 float eta = 1.0f / (distance + 0.1f);  
 
                 // Calculation of the weight for the neighbor: (Tau^Alpha) * (Eta^Beta)
