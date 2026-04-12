@@ -432,6 +432,9 @@ namespace _Project.Scripts.MapGeneration.Core
                 return;
             }
             
+            // Reset the contradiction flag
+            contradictionFound = false;
+            
             int targetHistorySize = snapshotMarkers.Pop();
 
             while (removalHistory.Count > targetHistorySize)
