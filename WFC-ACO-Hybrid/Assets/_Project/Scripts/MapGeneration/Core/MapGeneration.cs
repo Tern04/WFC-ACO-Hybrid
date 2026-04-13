@@ -41,9 +41,10 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             InitializeGrid(); 
             //RunWFC();
-            StartCoroutine(GenerateDFSHybridAnimated());
+            //StartCoroutine(GenerateDFSHybridAnimated());
             //GenerateValidDFSMap();
             //RunWFCBenchmark();
+            GenerateValidACOMap();
         }
 
         /// <summary>
@@ -107,30 +108,31 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <summary>
         /// Sets the start and finish tiles on the map.
         /// </summary>
-        void SetStartAndFinish(WFCSolver solver,bool visualize = false)
+        void SetStartAndFinish(WFCSolver solver, bool visualize = false)
         {
             // Start in the first floor, first corner
             Cell startCell = grid[0, 0, 0];
             var filteredStart = startVariants.Where(v => v.Sockets[0] == "path" ||
                                                          v.Sockets[1] == "path").ToList();
-            solver.ForceCollapse(startCell, filteredStart);
             
-            if (visualize)
+            if (filteredStart.Count > 0)
             {
-                VisualizeCell(startCell);
+                // Set the initial start with the filtered start variants to ensure it has a valid path connection
+                solver.SetInitialCell(startCell, filteredStart);
+                if (visualize) VisualizeCell(startCell);
             }
 
             // Finish in the opposite corner at the last floor 
             Cell endCell = grid[mapWidth - 1, mapFloors - 1, mapDepth - 1];
             var filteredEnd = finishVariants.Where(v => v.Sockets[2] == "path" ||
                                                         v.Sockets[3] == "path").ToList();
-            solver.ForceCollapse(endCell, filteredEnd);
             
-            if (visualize)
+            if (filteredEnd.Count > 0)
             {
-                VisualizeCell(endCell);
+                // Set the initial finish with the filtered end variants to ensure it has a valid path connection
+                solver.SetInitialCell(endCell, filteredEnd); 
+                if (visualize) VisualizeCell(endCell);
             }
-            
         }
 
         /// <summary>
@@ -238,6 +240,59 @@ namespace _Project.Scripts.MapGeneration.Core
                     Debug.LogWarning("Attempt number" + attempt +" failed.)");
                     yield return new WaitForSeconds(0.5f); // Wait before retrying
                 }
+            }
+        } 
+
+        /// <summary>
+        /// Generates a valid map by running the ACO-WFC hybrid algorithm.
+        /// Uses ACO to guide the WFC process and visualizes the generation in real-time.
+        /// </summary>
+        private void GenerateValidACOMap()
+        {
+            // Clear the scene and reset the grid
+            ClearScene();
+            ResetGrid();
+            
+            // Time measurement for performance evaluation
+            float startTime = Time.realtimeSinceStartup;
+
+            // Initialize WFC and set start and finish positions
+            WFCSolver wfcSolver = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
+            wfcSolver.ApplyBoundaryConstraints();
+            
+            SetStartAndFinish(wfcSolver); 
+
+            // Initialize the ACO solver with the grid and WFC solver reference
+            ACOHybridSolver acoSolver = new ACOHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfcSolver);
+
+            Vector3Int startPos = new Vector3Int(0, 0, 0);
+            Vector3Int endPos = new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1);
+
+            // Start the ACO algorithm to build the path and guide the WFC process
+            List<Vector3Int> builtPath = acoSolver.RunACOHybrid(startPos, endPos);
+
+            // Evaluation and visualization
+            if (builtPath != null)
+            {
+                float duration = (Time.realtimeSinceStartup - startTime) * 1000f; 
+
+                Debug.Log("Valid map generated on the first attempt");
+                Debug.Log($"Total Generation Time: {duration:0.00} ms.");
+                Debug.Log($"Optimal Path Length: {builtPath.Count} steps.");
+
+                // Set the main path flag for visualization
+                foreach (Vector3Int pos in builtPath)
+                {
+                    grid[pos.x, pos.y, pos.z].isMainPath = true;
+                }
+
+                // Instantiate the final map tiles with the main path highlighted
+                InstantiateTiles();
+            }
+            else
+            {
+                // Failure
+                Debug.LogError("Failed to generate a map. Ants could not find any buildable path.");
             }
         }
 
@@ -391,3 +446,4 @@ namespace _Project.Scripts.MapGeneration.Core
         
     }
 }
+
