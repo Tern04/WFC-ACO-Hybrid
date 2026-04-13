@@ -156,29 +156,47 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <returns></returns>
         private bool SimulatePathInWFC(List<Vector3Int> path)
         {
-            foreach (var p in path)
             {
-                Cell cell = grid[p.x, p.y, p.z];
-                
-                // Get all variants that have a path socket available for this cell
-                var pathVariants = cell.AvailableVariants
-                    .Where(v => v.Sockets.Any(s => s == "path" || s.StartsWith("stairs_up")))
-                    .ToList();
-
-                if (pathVariants.Count == 0)
+                for (int i = 0; i < path.Count; i++)
                 {
-                    return false;
-                }
-                
-                // Force collapse the cell with the path variant
-                wfc.ForceCollapse(cell, pathVariants);
-            }
+                    Cell cell = grid[path[i].x, path[i].y, path[i].z];
+                    
+                    // Skip collapsed cells (start and finish)
+                    if (cell.IsCollapsed)
+                    {
+                        continue;
+                    }
 
-            // If contradiction is found, the path is not valid
-            return !wfc.HasContradiction;
+                    // Get the required directions for the current cell based on the path
+                    List<int> requiredDirections = new List<int>();
+                    if (i > 0) requiredDirections.Add(GetDirectionIndex(path[i], path[i - 1]));
+                    if (i < path.Count - 1) requiredDirections.Add(GetDirectionIndex(path[i], path[i + 1]));
+
+                    var pathVariants = cell.AvailableVariants.Where(v =>
+                    {
+                        // Check for path sockets in all required directions
+                        foreach (int dirIndex in requiredDirections)
+                        {
+                            string socket = v.Sockets[dirIndex];
+                            if (socket != "path" && !socket.StartsWith("stairs_up"))
+                            {
+                                return false; 
+                            }
+                        }
+
+                        return true;
+                    }).ToList();
+
+                    if (pathVariants.Count == 0) return false;
+
+                    wfc.ForceCollapse(cell, pathVariants);
+                }
+
+                return !wfc.HasContradiction;
+            }
         }
 
-        
+
         /// <summary>
         /// Deposits pheromones on the path based on the length of the path.
         /// The amount of pheromones awarded is proportional to the length of the path.
@@ -232,14 +250,47 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <param name="path"></param>
         private void ApplyConstraintsToWFC(List<Vector3Int> path)
         {
-            foreach (var p in path)
+            for (int i = 0; i < path.Count; i++)
             {
-                Cell cell = grid[p.x, p.y, p.z];
-                var pathVariants = cell.AvailableVariants
-                    .Where(v => v.Sockets.Any(s => s == "path" || s.StartsWith("stairs_up")))
-                    .ToList();
+                Cell cell = grid[path[i].x, path[i].y, path[i].z];
+                
+                // Skip collapsed start and finish
+                if (cell.IsCollapsed)
+                {
+                    continue;
+                }
+        
+                List<int> requiredDirections = new List<int>();
+                if (i > 0) requiredDirections.Add(GetDirectionIndex(path[i], path[i - 1]));
+                if (i < path.Count - 1) requiredDirections.Add(GetDirectionIndex(path[i], path[i + 1]));
+
+                var pathVariants = cell.AvailableVariants.Where(v => 
+                {
+                    foreach (int dirIndex in requiredDirections)
+                    {
+                        string socket = v.Sockets[dirIndex];
+                        if (socket != "path" && !socket.StartsWith("stairs_up")) return false;
+                    }
+                    return true;
+                }).ToList();
+
                 wfc.ForceCollapse(cell, pathVariants);
             }
+        }
+        
+        /// <summary>
+        /// Gets the index of the direction that leads from one position to another.
+        /// </summary>
+        private int GetDirectionIndex(Vector3Int from, Vector3Int to)
+        {
+            Vector3Int dir = to - from;
+            if (dir == new Vector3Int(0, 0, 1)) return 0;  // North
+            if (dir == new Vector3Int(1, 0, 0)) return 1;  // East
+            if (dir == new Vector3Int(0, 0, -1)) return 2; // South
+            if (dir == new Vector3Int(-1, 0, 0)) return 3; // West
+            if (dir == new Vector3Int(0, 1, 0)) return 4;  // Up
+            if (dir == new Vector3Int(0, -1, 0)) return 5; // Down
+            return -1; // Invalid direction
         }
 
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 using _Project.Scripts.MapGeneration.Data;
+using Debug = UnityEngine.Debug;
 
 namespace _Project.Scripts.MapGeneration.Core
 {
@@ -116,11 +117,52 @@ namespace _Project.Scripts.MapGeneration.Core
 
         /// <summary>
         /// Force the solver to collapse a cell to a specific variant.
+        /// Removes all variants that are not in the allowedVariants list.
         /// Used for setting start and finish tiles.
         /// </summary>
         public void ForceCollapse(Cell cell, List<TileVariant> allowedVariants)
         {
-            cell.AvailableVariants = allowedVariants;
+            List<TileVariant> toRemove = new List<TileVariant>();
+            foreach (var variant in cell.AvailableVariants)
+            {
+                if (!allowedVariants.Contains(variant))
+                {
+                    toRemove.Add(variant);
+                }
+            }
+
+            foreach (var variant in toRemove)
+            {
+                RemoveVariantFromCell(cell, variant);
+            }
+
+            CollapseCell(cell);
+            Propagate(cell);
+        }
+        
+        /// <summary>
+        /// Helper method for setting the initial cell to a specific variant.
+        /// Used for setting start and finish tiles.
+        /// </summary>
+        public void SetInitialCell(Cell cell, List<TileVariant> initialVariants)
+        {
+            // Remove all variants that are not in the initialVariants list
+            List<TileVariant> oldVariants = new List<TileVariant>(cell.AvailableVariants);
+            foreach (var variant in oldVariants)
+            {
+                RemoveVariantFromCell(cell, variant);
+            }
+
+            // Add the allowed initial variants back to the cell's available variants
+            cell.AvailableVariants.AddRange(initialVariants);
+
+            if (cell.AvailableVariants.Count == 0)
+            {
+                Debug.Log("No valid variants left for cell " + cell.GridPosition);
+                return;
+            }
+
+            // Collapse and propagate the cell to set the initial cells
             CollapseCell(cell);
             Propagate(cell);
         }
@@ -264,6 +306,11 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <param name="cell">Cell to be collapsed</param>
         private void CollapseCell(Cell cell)
         {
+            if (cell.AvailableVariants.Count == 0)
+            {
+                return;
+            }
+            
             int randomIndex = Random.Range(0, cell.AvailableVariants.Count);
             cell.CollapsedVariant = cell.AvailableVariants[randomIndex];
             
@@ -424,7 +471,7 @@ namespace _Project.Scripts.MapGeneration.Core
         }
 
         /// <summary>
-        /// Restores the removed variant from stack to the last saved snapshot.
+        /// Restores the removed variant from the stack to the last saved snapshot.
         /// </summary>
         public void RestoreSnapshot()
         {

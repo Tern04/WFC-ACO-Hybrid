@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using _Project.Scripts.MapGeneration.Data;
 using UnityEngine;
 
 namespace _Project.Scripts.MapGeneration.Core
@@ -65,6 +66,7 @@ namespace _Project.Scripts.MapGeneration.Core
             Path = new List<Vector3Int> { startPos };
             TabuList = new HashSet<Vector3Int> { startPos };
             Vector3Int currentPos = startPos;
+            List<TileVariant> currentVariants = grid[startPos.x, startPos.y, startPos.z].AvailableVariants;
             ReachedTarget = false;
 
             int steps = 0;
@@ -75,7 +77,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 steps++;
                 
                 // Get valid neighbors for pathing
-                List<Vector3Int> validNeighbors = GetValidNeighbors(currentPos);
+                var validNeighbors = GetValidNeighbors(currentPos, currentVariants);
 
                 // Dead end
                 if (validNeighbors.Count == 0)
@@ -84,12 +86,14 @@ namespace _Project.Scripts.MapGeneration.Core
                 }
 
                 // Select the next step based on pheromone influence and heuristic
-                Vector3Int nextStep = SelectNextStep(validNeighbors);
+                var nextStep = SelectNextStep(validNeighbors);
                 
                 // Move to the next step
-                Path.Add(nextStep);
-                TabuList.Add(nextStep);
-                currentPos = nextStep;
+                Path.Add(nextStep.pos);
+                TabuList.Add(nextStep.pos);
+                
+                currentPos = nextStep.pos;
+                currentVariants = nextStep.variants;
             }
 
             // Check if the ant reached the target
@@ -103,7 +107,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// Selects the next step for the ant based on a combination of pheromone levels and heuristic information.
         /// Uses Tau (pheromone level) and Eta (heuristic) to calculate the probability of each neighbor.
         /// </summary>
-        private Vector3Int SelectNextStep(List<Vector3Int> neighbors)
+        private (Vector3Int pos, List<TileVariant> variants) SelectNextStep(List<(Vector3Int pos, List<TileVariant> variants)> neighbors)
         {
             // Initialization
             List<double> probabilities = new List<double>();
@@ -112,11 +116,11 @@ namespace _Project.Scripts.MapGeneration.Core
             // Calculate the probability for each neighbor based on pheromone levels and heuristic information
             foreach (var n in neighbors)
             {
-                float tau = pheromones[n.x, n.y, n.z]; 
+                float tau = pheromones[n.pos.x, n.pos.y, n.pos.z]; 
                 
                 // Calculation of the heuristic (Eta) based on the distance to the target.
                 // Adding 0.1f to avoid division by zero
-                float distance = Mathf.Abs(n.x - endPos.x) + Mathf.Abs(n.y - endPos.y) + Mathf.Abs(n.z - endPos.z);
+                float distance = Mathf.Abs(n.pos.x - endPos.x) + Mathf.Abs(n.pos.y - endPos.y) + Mathf.Abs(n.pos.z - endPos.z);
                 float eta = 1.0f / (distance + 0.1f);  
 
                 // Calculation of the weight for the neighbor: (Tau^Alpha) * (Eta^Beta)
@@ -145,40 +149,76 @@ namespace _Project.Scripts.MapGeneration.Core
         
         /// <summary>
         /// Finds valid neighbors for pathing based on the current position and the map boundaries.
-        /// Checks if the neighbor is within the map bounds, not in the Tabu list, and has a path socket.
+        /// Checks if the neighbor is within the map bounds, not in the Tabu list, and has a valid path socket.
         /// </summary>
-        private List<Vector3Int> GetValidNeighbors(Vector3Int pos)
+        private List<(Vector3Int pos, List<TileVariant> variants)> GetValidNeighbors(Vector3Int pos, List<TileVariant> currentVariants)
         {
-            // List of valid neighbors
-            List<Vector3Int> valid = new List<Vector3Int>();
+            var valid = new List<(Vector3Int pos, List<TileVariant> variants)>();
             
-            // Directions of the neighbors
             Vector3Int[] dirs = { 
-                new Vector3Int(0, 0, 1),   // North
-                new Vector3Int(1, 0, 0),   // East
-                new Vector3Int(0, 0, -1),  // South
-                new Vector3Int(-1, 0, 0),  // West
-                new Vector3Int(0, 1, 0),   // Up
-                new Vector3Int(0, -1, 0)   // Down
+                new Vector3Int(0, 0, 1),   // 0: North
+                new Vector3Int(1, 0, 0),   // 1: East
+                new Vector3Int(0, 0, -1),  // 2: South
+                new Vector3Int(-1, 0, 0),  // 3: West
+                new Vector3Int(0, 1, 0),   // 4: Up
+                new Vector3Int(0, -1, 0)   // 5: Down
             };
+            
 
-            foreach (var d in dirs)
+            for (int i = 0; i < 6; i++)
             {
+                Vector3Int d = dirs[i];
                 Vector3Int n = pos + d;
                 
-                // Boundary and Tabu check
                 if (IsInBounds(n) && !TabuList.Contains(n))
                 {
                     Cell neighborCell = grid[n.x, n.y, n.z];
-
-                    // Check for path sockets in the neighbor cell's available variants
-                    bool canBePath = neighborCell.AvailableVariants.Any(variant => 
-                        variant.Sockets.Any(socket => socket == "path" || socket.StartsWith("stairs_up"))
-                    );
-
-                    if (canBePath)
+                    int oppositeDir;
+                    
+                    if (i < 4)
                     {
-                        valid.Add(n);
+                        oppositeDir = (i + 2) % 4;
+                    }
+                    else if (i == 4)
+                    {
+                        oppositeDir = 5;
+                    }
+                    else
+                    {
+                        oppositeDir = 4;
+                    }
+
+                    // Get all exit sockets for the current variants in the direction i
+                    HashSet<string> possibleExitSockets = new HashSet<string>();
+                    foreach (var v in currentVariants)
+                    {
+                        string s = v.Sockets[i];
+                        if (s == "path" || s.StartsWith("stairs_up")) 
+                        {
+                            possibleExitSockets.Add(s);
+                        }
+                    }
+
+                    // If there are no exit sockets, skip this neighbor
+                    if (possibleExitSockets.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    // Check if the neighbor has any variant that can connect to the current cell's exit socket
+                    List<TileVariant> nextVariants = new List<TileVariant>();
+                    foreach (var nv in neighborCell.AvailableVariants)
+                    {
+                        if (possibleExitSockets.Contains(nv.Sockets[oppositeDir]))
+                        {
+                            nextVariants.Add(nv);
+                        }
+                    }
+
+                    // If there are valid variants, add the neighbor to the list of valid neighbors
+                    if (nextVariants.Count > 0)
+                    {
+                        valid.Add((n, nextVariants));
                     }
                 }
             }
