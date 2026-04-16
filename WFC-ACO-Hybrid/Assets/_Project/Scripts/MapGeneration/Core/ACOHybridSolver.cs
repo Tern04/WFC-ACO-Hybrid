@@ -22,7 +22,6 @@ namespace _Project.Scripts.MapGeneration.Core
         // ACO parameters
         private const float Alpha = 1.0f; // Pheromone influence
         private readonly float beta; // Heuristic weight
-        private readonly bool useDynamicBeta; // Flag for benchmarks
         private const float InitialPheromone = 0.1f; // Initial pheromone value
         private const float Rho = 0.15f; // Pheromone evaporation rate
         private const float Q = 100.0f; // Pheromone award constant
@@ -32,7 +31,7 @@ namespace _Project.Scripts.MapGeneration.Core
         private float[,,] pheromones;
 
         public ACOHybridSolver(Cell[,,] grid, int mapWidth, int mapFloors, int mapDepth,
-            WFCSolver wfc, float beta = -1, int colonySize= -1, int iterations = -1, bool useDynamicBeta = false)
+            WFCSolver wfc, float beta = -1, int colonySize= -1, int iterations = -1)
         {
             this.grid = grid;
             this.width = mapWidth;
@@ -56,8 +55,6 @@ namespace _Project.Scripts.MapGeneration.Core
                 this.maxIterations = Mathf.Clamp(Mathf.RoundToInt(sqrt * 0.2f), 8, 20);
             }
             
-            this.useDynamicBeta = useDynamicBeta;
-
             InitializePheromones();
         }
 
