@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq; 
+using System.IO;
+using System.Linq;
+using System.Text;
 using UnityEngine;
 using _Project.Scripts.MapGeneration.Data;
 using _Project.Scripts.Pathfinding;
@@ -21,11 +23,11 @@ namespace _Project.Scripts.MapGeneration.Core
 
         [Header("WFC Data")] 
         public List<TileData> allAvailableTiles; // List of all available tiles
-        
+
         [Header("Special Tiles")]
         public TileData startTileData;
         public TileData finishTileData;
-        
+
         [Header("Visualization")]
         public Material mainPathMaterial;
 
@@ -39,12 +41,13 @@ namespace _Project.Scripts.MapGeneration.Core
         /// </summary>
         void Start()
         {
-            InitializeGrid(); 
+            InitializeGrid();
             //RunWFC();
             //StartCoroutine(GenerateDFSHybridAnimated());
             //GenerateValidDFSMap();
             //RunWFCBenchmark();
-            GenerateValidACOMap();
+            //GenerateValidACOMap();
+            RunACOBenchmark();
         }
 
         /// <summary>
@@ -52,7 +55,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// </summary>
         void InitializeGrid()
         {
-            standardVariants = new List<TileVariant>(); 
+            standardVariants = new List<TileVariant>();
             startVariants = new List<TileVariant>();
             finishVariants = new List<TileVariant>();
 
@@ -64,12 +67,12 @@ namespace _Project.Scripts.MapGeneration.Core
 
                     // Check for the start tile
                     if (tile == startTileData) startVariants.Add(variant);
-                    
+
                     // Check for the finish tile
                     if (tile == finishTileData) finishVariants.Add(variant);
-                    
+
                     // Other tiles
-                    if (tile != startTileData && tile != finishTileData) standardVariants.Add(variant); 
+                    if (tile != startTileData && tile != finishTileData) standardVariants.Add(variant);
                 }
             }
 
@@ -86,7 +89,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 }
             }
         }
-        
+
         /// <summary>
         /// Resets the grid to its initial state.
         /// </summary>
@@ -114,7 +117,7 @@ namespace _Project.Scripts.MapGeneration.Core
             Cell startCell = grid[0, 0, 0];
             var filteredStart = startVariants.Where(v => v.Sockets[0] == "path" ||
                                                          v.Sockets[1] == "path").ToList();
-            
+
             if (filteredStart.Count > 0)
             {
                 // Set the initial start with the filtered start variants to ensure it has a valid path connection
@@ -126,11 +129,11 @@ namespace _Project.Scripts.MapGeneration.Core
             Cell endCell = grid[mapWidth - 1, mapFloors - 1, mapDepth - 1];
             var filteredEnd = finishVariants.Where(v => v.Sockets[2] == "path" ||
                                                         v.Sockets[3] == "path").ToList();
-            
+
             if (filteredEnd.Count > 0)
             {
                 // Set the initial finish with the filtered end variants to ensure it has a valid path connection
-                solver.SetInitialCell(endCell, filteredEnd); 
+                solver.SetInitialCell(endCell, filteredEnd);
                 if (visualize) VisualizeCell(endCell);
             }
         }
@@ -145,8 +148,8 @@ namespace _Project.Scripts.MapGeneration.Core
         {
             int attempts = 0;
             bool success = false;
-            int maxAttempts = CalculateMaxAttempts(); 
-            
+            int maxAttempts = CalculateMaxAttempts();
+
             // Start runtime measurement for generation performance evaluation.
             float startTime = Time.realtimeSinceStartup;
 
@@ -155,11 +158,11 @@ namespace _Project.Scripts.MapGeneration.Core
                 attempts++;
                 ClearScene();
                 ResetGrid();
-                
+
                 WFCSolver solver = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
                 solver.ApplyBoundaryConstraints();
                 SetStartAndFinish(solver);
-                
+
                 DFSHybridSolver dfsSolver = new DFSHybridSolver(grid, mapWidth, mapFloors, mapDepth, solver);
 
                 Vector3Int startPos = new Vector3Int(0, 0, 0);
@@ -171,7 +174,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 if (builtPath != null)
                 {
                     // Stop measuring time after the successful computation
-                    float duration = (Time.realtimeSinceStartup - startTime) * 1000f; 
+                    float duration = (Time.realtimeSinceStartup - startTime) * 1000f;
                     success = true;
 
                     // Output key benchmarking metrics for reproducible evaluation.
@@ -189,13 +192,13 @@ namespace _Project.Scripts.MapGeneration.Core
                     InstantiateTiles();
                 }
             }
-            
+
             if (!success)
             {
                 Debug.LogError("Failed to generate a valid map after " + attempts + " attempts.");
             }
         }
-        
+
         /// <summary>
         /// Generates a valid map by repeatedly running the hybrid DFS algorithm until a valid map is found.
         /// Iterates up to a maximum number of attempts to prevent infinite loops.
@@ -207,17 +210,17 @@ namespace _Project.Scripts.MapGeneration.Core
             int attempt = 0;
             bool success = false;
             int maxAttempts = CalculateMaxAttempts();
-            
+
             while (!success && attempt < maxAttempts)
             {
                 attempt++;
                 ClearScene();
                 ResetGrid();
-                
+
                 // Initialize the WFC solver and set the start with finish and boundary constraints
                 WFCSolver solver = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
                 solver.ApplyBoundaryConstraints();
-                SetStartAndFinish(solver, true); 
+                SetStartAndFinish(solver, true);
                 DFSHybridSolver dfsSolver = new DFSHybridSolver(grid, mapWidth, mapFloors, mapDepth, solver);
 
                 // Set start and finish positions in the corners of the map
@@ -226,10 +229,10 @@ namespace _Project.Scripts.MapGeneration.Core
 
                 // Run the hybrid DFS algorithm with visualization
                 yield return StartCoroutine(dfsSolver.RunDFSHybridAnimated(startPos, endPos, VisualizeCell));
-                
+
                 // Check if the WFC process completed successfully and if a valid path exists
                 PathValidator validator = new PathValidator(grid, mapWidth, mapFloors, mapDepth);
-                
+
                 if (solver.IsFullyCollapsed() && validator.IsPathPossibleDFS(startPos, endPos))
                 {
                     Debug.Log("Valid map generated after" + attempt + " attempts.");
@@ -237,11 +240,11 @@ namespace _Project.Scripts.MapGeneration.Core
                 }
                 else
                 {
-                    Debug.LogWarning("Attempt number" + attempt +" failed.)");
+                    Debug.LogWarning("Attempt number" + attempt + " failed.)");
                     yield return new WaitForSeconds(0.5f); // Wait before retrying
                 }
             }
-        } 
+        }
 
         /// <summary>
         /// Generates a valid map by running the ACO-WFC hybrid algorithm.
@@ -252,15 +255,15 @@ namespace _Project.Scripts.MapGeneration.Core
             // Clear the scene and reset the grid
             ClearScene();
             ResetGrid();
-            
+
             // Time measurement for performance evaluation
             float startTime = Time.realtimeSinceStartup;
 
             // Initialize WFC and set start and finish positions
             WFCSolver wfcSolver = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
             wfcSolver.ApplyBoundaryConstraints();
-            
-            SetStartAndFinish(wfcSolver); 
+
+            SetStartAndFinish(wfcSolver);
 
             // Initialize the ACO solver with the grid and WFC solver reference
             ACOHybridSolver acoSolver = new ACOHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfcSolver);
@@ -274,7 +277,7 @@ namespace _Project.Scripts.MapGeneration.Core
             // Evaluation and visualization
             if (builtPath != null)
             {
-                float duration = (Time.realtimeSinceStartup - startTime) * 1000f; 
+                float duration = (Time.realtimeSinceStartup - startTime) * 1000f;
 
                 Debug.Log("Valid map generated on the first attempt");
                 Debug.Log($"Total Generation Time: {duration:0.00} ms.");
@@ -305,7 +308,7 @@ namespace _Project.Scripts.MapGeneration.Core
             int totalCells = mapWidth * mapFloors * mapDepth;
 
             int maxAttempts = 20 + (totalCells / 2);
-            
+
             return Math.Clamp(maxAttempts, 20, 500); // Clamp between 20 and 500 attempts
         }
 
@@ -320,7 +323,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 Destroy(child.gameObject);
             }
         }
-        
+
         /// <summary>
         /// Instantiates the tiles in the Unity scene based on the collapsed grid.
         /// Each tile is placed according to its grid position and rotation.
@@ -377,7 +380,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 }
             }
         }
-        
+
         /// <summary>
         /// Visualizes the collapsed cell in the scene.
         /// </summary>
@@ -389,7 +392,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 InstantiateCell(cell);
             }
         }
-        
+
         /// <summary>
         /// Configures and triggers the automated performance evaluation for the baseline WFC algorithm.
         /// </summary>
@@ -425,25 +428,180 @@ namespace _Project.Scripts.MapGeneration.Core
             // Environment reset and constraints initialization
             ClearScene();
             ResetGrid();
-        
+
             WFCSolver solver = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
             solver.ApplyBoundaryConstraints();
             SetStartAndFinish(solver);
 
             // Performance measurement
             Stopwatch sw = Stopwatch.StartNew();
-        
+
             // Target algorithm execution
-            solver.RunWFC(); 
-        
+            solver.RunWFC();
+
             sw.Stop();
-            
+
             double totalTime = sw.Elapsed.TotalMilliseconds;
             double entropyTime = solver.LastEntropySearchTimeMs;
-        
+
             return (totalTime, entropyTime);
         }
+
         
+        /// <summary>
+        /// Benchmark the performance of the ACO-WFC hybrid algorithm.
+        /// Tests Beta sweep, swarm size sweep, and scalability sweep.
+        /// </summary>
+        public void RunACOBenchmark()
+        {
+            string filePath = "ACO_Benchmark_SqrtDyn.csv";
+            StringBuilder csv = new StringBuilder();
+            int runsPerConfig = 100;
+
+            // CSV header
+            csv.AppendLine(
+                "Test_Phase,Map_Size,Colony_Size,Max_Iter,Beta,Rho,Avg_Time_ms,Avg_Path_Length,Success_Rate_%");
+
+            // Fixed parameters for the algorithm
+            Vector3Int bigMap = new Vector3Int(30, 5, 30);
+            int hardCells = bigMap.x * bigMap.y * bigMap.z;
+            int dynColony = Mathf.Clamp(hardCells / 200, 10, 30); // Dynamic colony size
+            int dynIter = Mathf.Clamp(hardCells / 100, 15, 40); // Dynamic iteration count
+
+            // First test phase: Beta sweep
+            // For finding best Beta value for this project
+
+            Debug.Log("Beta Sweep");
+
+            float[] betaValues = { 7.8f, 7.9f, 8.0f, 8.1f, 8.2f };
+
+            // Perform beta sweep test for each beta value
+            foreach (float b in betaValues)
+            {
+                string phase = $"Beta_Sweep";
+                //RunTestBatch(csv, phase, bigMap, dynColony, dynIter, b, runsPerConfig);
+            }
+
+            // // Second test phase: Swarm Size Sweep
+            // For finding best swarm size for stability and performance
+
+            Debug.Log("Swarm Size Sweep");
+            float optimalBeta = 7.9f; // Fixed Beta value 
+            (int col, int iter)[] swarmConfigs =
+            {
+                // Fast
+                (5, 5), (5, 10), (10, 5),
+
+                // Mid
+                (10, 15), (10, 20), (15, 10), (20, 10),
+
+                // High ant, low iterations
+                (25, 10), (30, 10), (40, 10), (30, 15),
+
+                // Low ants, high iterations
+                (10, 30), (10, 40), (12, 40), (5, 40),
+
+                // Balanced mid-high
+                (20, 40), (30, 30), (40, 20)
+            };
+
+            // Perform swarm size sweep test for each swarm size
+            foreach (var swarm in swarmConfigs)
+            {
+                string phase = $"Swarm_Size";
+                //RunTestBatch(csv, phase, bigMap, swarm.col, swarm.iter, optimalBeta, runsPerConfig);
+            }
+
+
+            // Scalability Sweep
+            // For evaluating how the algorithm scales with increasing map sizes
+
+            Debug.Log("Scalability Sweep");
+            Vector3Int[] scalingMaps =
+            {
+                new Vector3Int(10, 3, 10),
+                new Vector3Int(15, 4, 15),
+                new Vector3Int(20, 4, 20),
+                new Vector3Int(25, 5, 25),
+                new Vector3Int(30, 5, 30)
+            };
+
+            // Perform scalability sweep test for each scaling map size
+            foreach (var map in scalingMaps)
+            {
+                int cells = map.x * map.y * map.z;
+
+                float sqrt = Mathf.Sqrt(cells);
+                int colony = Mathf.Clamp(Mathf.RoundToInt(sqrt * 0.5f), 10, 40);
+                int iterations = Mathf.Clamp(Mathf.RoundToInt(sqrt * 0.2f), 8, 20);
+                
+                string phase = $"Scalability";
+                RunTestBatch(csv, phase, map, colony, iterations, optimalBeta, runsPerConfig);
+                
+            }
+
+            // Write the collected benchmark data to a CSV file
+            File.WriteAllText(filePath, csv.ToString());
+            Debug.Log($"Benchmark saved to: {filePath}");
+        }
+
+        /// <summary>
+        /// Helper method to run a batch of tests for a given phase and map size.
+        /// </summary>
+        private void RunTestBatch(StringBuilder csv, string phase, Vector3Int size, int colony, int iter, float beta,
+            int runs)
+        {
+            double sumTime = 0;
+            double sumPathLength = 0;
+            int successCount = 0;
+
+            mapWidth = size.x;
+            mapFloors = size.y;
+            mapDepth = size.z;
+
+            for (int run = 0; run < runs; run++)
+            {
+                // Clear the scene and reset the grid
+                ClearScene();
+                ResetGrid();
+
+                // Initialize WFC and set start and finish positions
+                WFCSolver wfc = new WFCSolver(grid, size.x, size.y, size.z);
+                wfc.ApplyBoundaryConstraints();
+                SetStartAndFinish(wfc);
+
+                // Initialize the ACO solver
+                ACOHybridSolver aco = new ACOHybridSolver(grid, size.x, size.y, size.z, wfc, beta, colony, iter);
+
+                Vector3Int startPos = new Vector3Int(0, 0, 0);
+                Vector3Int endPos = new Vector3Int(size.x - 1, size.y - 1, size.z - 1);
+
+                // Start the ACO algorithm to build the path with timer
+                float startTime = Time.realtimeSinceStartup;
+                List<Vector3Int> path = aco.RunACOHybrid(startPos, endPos);
+                float duration = (Time.realtimeSinceStartup - startTime) * 1000f;
+
+                sumTime += duration;
+
+                if (path != null)
+                {
+                    successCount++;
+                    sumPathLength += path.Count;
+                }
+            }
+
+            double avgTime = sumTime / runs;
+            double avgPath = successCount > 0 ? (sumPathLength / successCount) : -1;
+            float successRate = (successCount / (float)runs) * 100f;
+
+            // CSV writing
+            string mapStr = $"{size.x}x{size.y}x{size.z}";
+            csv.AppendLine(
+                $"{phase},{mapStr},{colony},{iter},{beta:F1},{0.15},{avgTime:F0},{avgPath:F1},{successRate:F0}");
+
+            Debug.Log(
+                $"[{phase}] Map: {mapStr} | Col: {colony} | Iter: {iter} | Beta: {beta:F1} --> Time: {avgTime:F0}ms | Path: {avgPath:F1} | Success: {successRate}%");
+        }
     }
 }
 

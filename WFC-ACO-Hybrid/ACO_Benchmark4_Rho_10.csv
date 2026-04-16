@@ -1,0 +1,15 @@
+Test_Phase,Map_Size,Colony_Size,Max_Iter,Beta,Avg_Time_ms,Avg_Path_Length,Success_Rate_%
+Beta_Sweep,30x5x30,22,40,7.8,1472,77.6,95
+Beta_Sweep,30x5x30,22,40,7.9,1430,69.4,90
+Beta_Sweep,30x5x30,22,40,8.0,1393,68.5,75
+Beta_Sweep,30x5x30,22,40,8.1,1464,70.5,80
+Beta_Sweep,30x5x30,22,40,8.2,1442,75.3,70
+Swarm_Size,30x5x30,5,10,7.9,213,90.8,45
+Swarm_Size,30x5x30,10,20,7.9,461,83.5,65
+Swarm_Size,30x5x30,20,40,7.9,1377,80.3,80
+Swarm_Size,30x5x30,30,60,7.9,2607,70.3,95
+Scalability,10x3x10,10,15,7.9,65,21.4,95
+Scalability,15x4x15,10,15,7.9,134,33.4,100
+Scalability,20x4x20,10,16,7.9,229,45.7,100
+Scalability,25x5x25,15,31,7.9,727,56.4,100
+Scalability,30x5x30,22,40,7.9,1428,74.1,80

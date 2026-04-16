@@ -1,0 +1,12 @@
+Test_Phase,Map_Size,Colony_Size,Max_Iter,Beta,Rho,Avg_Time_ms,Avg_Path_Length,Success_Rate_%
+Swarm_Size,30x5x30,5,10,7.9,0.15,197,91.5,44
+Swarm_Size,30x5x30,10,20,7.9,0.15,465,81.8,67
+Swarm_Size,30x5x30,20,40,7.9,0.15,1290,74.0,84
+Swarm_Size,30x5x30,30,60,7.9,0.15,2424,70.8,89
+Swarm_Size,30x5x30,12,40,7.9,0.15,912,78.2,77
+Swarm_Size,30x5x30,30,10,7.9,0.15,576,76.9,86
+Scalability,10x3x10,10,15,7.9,0.15,61,21.5,97
+Scalability,15x4x15,10,15,7.9,0.15,136,33.5,97
+Scalability,20x4x20,10,16,7.9,0.15,221,46.1,99
+Scalability,25x5x25,15,31,7.9,0.15,685,57.3,97
+Scalability,30x5x30,22,40,7.9,0.15,1389,72.4,84

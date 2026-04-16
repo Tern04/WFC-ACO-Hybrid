@@ -21,22 +21,42 @@ namespace _Project.Scripts.MapGeneration.Core
         
         // ACO parameters
         private const float Alpha = 1.0f; // Pheromone influence
-        private const float Beta = 7.0f; // Heuristic weight
+        private readonly float beta; // Heuristic weight
+        private readonly bool useDynamicBeta; // Flag for benchmarks
         private const float InitialPheromone = 0.1f; // Initial pheromone value
-        private const float Rho = 0.05f; // Pheromone evaporation rate
+        private const float Rho = 0.15f; // Pheromone evaporation rate
         private const float Q = 100.0f; // Pheromone award constant
-        private const int ColonySize = 20; // Number of agents in the colony
-        private const int MaxIterations = 50; // Maximum number of colony iterations
+        private readonly int colonySize; // Number of agents in the colony
+        private readonly int maxIterations; // Maximum number of colony iterations
         
         private float[,,] pheromones;
 
-        public ACOHybridSolver(Cell[,,] grid, int mapWidth, int mapFloors, int mapDepth, WFCSolver wfc)
+        public ACOHybridSolver(Cell[,,] grid, int mapWidth, int mapFloors, int mapDepth,
+            WFCSolver wfc, float beta = -1, int colonySize= -1, int iterations = -1, bool useDynamicBeta = false)
         {
             this.grid = grid;
             this.width = mapWidth;
             this.floors = mapFloors;
             this.depth = mapDepth;
             this.wfc = wfc;
+            this.beta = beta > 0 ? beta : 7.9f;
+            
+            // Check for manual overrides of the parameters - benchmark
+            if (colonySize > 0 && iterations > 0)
+            {
+                this.colonySize = colonySize;
+                this.maxIterations = iterations;
+            }
+            else
+            {
+                // Calculate dynamic parameters based on the number of cells in the map
+                int cells = mapWidth * mapFloors * mapDepth;
+                float sqrt = Mathf.Sqrt(cells);
+                this.colonySize = Mathf.Clamp(Mathf.RoundToInt(sqrt * 0.5f), 10, 40);
+                this.maxIterations = Mathf.Clamp(Mathf.RoundToInt(sqrt * 0.2f), 8, 20);
+            }
+            
+            this.useDynamicBeta = useDynamicBeta;
 
             InitializePheromones();
         }
@@ -80,14 +100,14 @@ namespace _Project.Scripts.MapGeneration.Core
             int maxAntSteps = width * floors * depth;
 
             // Main loop of the algorithm
-            for (int iter = 0; iter < MaxIterations; iter++)
+            for (int iter = 0; iter < maxIterations; iter++)
             {
                 List<Ant> successfulAnts = new List<Ant>();
 
                 // Run ColonySize ants to explore the map and find paths to the target position
-                for (int i = 0; i < ColonySize; i++)
+                for (int i = 0; i < colonySize; i++)
                 {
-                    Ant ant = new Ant(grid, pheromones, endPos, width, floors, depth, Alpha, Beta);
+                    Ant ant = new Ant(grid, pheromones, endPos, width, floors, depth, Alpha, beta);
                     
                     ant.Explore(startPos, maxAntSteps);
                     

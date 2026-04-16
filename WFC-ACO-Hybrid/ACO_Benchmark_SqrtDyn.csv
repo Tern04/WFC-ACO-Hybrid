@@ -1,0 +1,6 @@
+Test_Phase,Map_Size,Colony_Size,Max_Iter,Beta,Rho,Avg_Time_ms,Avg_Path_Length,Success_Rate_%
+Scalability,10x3x10,10,8,7.9,0.15,41,21.4,98
+Scalability,15x4x15,15,8,7.9,0.15,106,33.2,99
+Scalability,20x4x20,20,8,7.9,0.15,199,44.9,99
+Scalability,25x5x25,28,11,7.9,0.15,472,57.9,95
+Scalability,30x5x30,34,13,7.9,0.15,756,72.5,87
