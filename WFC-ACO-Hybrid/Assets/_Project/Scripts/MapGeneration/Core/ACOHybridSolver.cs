@@ -51,8 +51,8 @@ namespace _Project.Scripts.MapGeneration.Core
                 // Calculate dynamic parameters based on the number of cells in the map
                 int cells = mapWidth * mapFloors * mapDepth;
                 float sqrt = Mathf.Sqrt(cells);
-                this.colonySize = Mathf.Clamp(Mathf.RoundToInt(sqrt * 0.5f), 10, 40);
-                this.maxIterations = Mathf.Clamp(Mathf.RoundToInt(sqrt * 0.2f), 8, 20);
+                this.colonySize = Mathf.Clamp(Mathf.RoundToInt(sqrt * 0.5f), 10, 300);
+                this.maxIterations = Mathf.Clamp(Mathf.RoundToInt(sqrt * 0.2f), 8, 100);
             }
             
             InitializePheromones();
