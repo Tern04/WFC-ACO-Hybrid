@@ -47,7 +47,76 @@ namespace _Project.Scripts.MapGeneration.Core
             //GenerateValidDFSMap();
             //RunWFCBenchmark();
             //GenerateValidACOMap();
-            RunACOBenchmark();
+            //RunACOBenchmark();
+        }
+        
+        /// <summary>
+        /// Method for generating the map from UI.
+        /// 0 = DFS
+        /// 1 = ACO
+        /// 2 = Pure WFC
+        /// </summary>
+        public void GenerateMapFromUI(int width, int floors, int depth, int algoIndex, MapGeneratorUI uiCallback)
+        {
+            mapWidth = width;
+            mapFloors = floors;
+            mapDepth = depth;
+
+            float startTime = Time.realtimeSinceStartup;
+            List<Vector3Int> builtPath = null;
+            int attempts = 0;
+            int maxRetries = 3; // Max number of attempts before giving up
+
+            // Allow more attempts
+            while (attempts < maxRetries && builtPath == null)
+            {
+                attempts++;
+                ClearScene();
+                ResetGrid();
+                
+                WFCSolver wfc = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
+                wfc.ApplyBoundaryConstraints();
+                SetStartAndFinish(wfc);
+
+                Vector3Int startPos = new Vector3Int(0, 0, 0);
+                Vector3Int endPos = new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1);
+
+                if (algoIndex == 0) // 0 = DFS
+                {
+                    DFSHybridSolver dfs = new DFSHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfc);
+                    builtPath = dfs.RunDFSHybrid(startPos, endPos);
+                }
+                else if (algoIndex == 1) // 1 = ACO
+                {
+                    ACOHybridSolver aco = new ACOHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfc, 7.9f);
+                    builtPath = aco.RunACOHybrid(startPos, endPos);
+                }
+                else if (algoIndex == 2) // 2 = Pure WFC
+                {
+                    wfc.RunWFC();
+                    
+                    // None path is generated in pure wfc
+                    builtPath = new List<Vector3Int>(); 
+                }
+            }
+
+            float duration = (Time.realtimeSinceStartup - startTime) * 1000f;
+
+            if (builtPath != null)
+            {
+                // Path visualization
+                foreach (Vector3Int pos in builtPath)
+                {
+                    grid[pos.x, pos.y, pos.z].isMainPath = true;
+                }
+                
+                InstantiateTiles();
+                uiCallback.UpdateResult(true, duration, attempts, builtPath.Count);
+            }
+            else
+            {
+                uiCallback.UpdateResult(false, duration, attempts, 0);
+            }
         }
 
         /// <summary>
