@@ -171,14 +171,14 @@ namespace _Project.Scripts.MapGeneration.Core
 
             if (success)
             {
-                resultText = $"State: <color=#00FF00><b>ÚSPĚCH</b></color>\n\n" +
+                resultText = $"State: <color=#00FF00><b>SUCCES</b></color>\n\n" +
                              $"Time: <b>{timeMs:F0} ms</b>\n" +
                              $"Restarts: <b>{attempts}</b>\n" +
                              $"Path length: <b>{pathLength}</b>";
             }
             else
             {
-                resultText = $"State: <color=#FF0000><b>SELHÁNÍ</b></color>\n\n" +
+                resultText = $"State: <color=#FF0000><b>FAILURE</b></color>\n\n" +
                              $"Time: <b>{timeMs:F0} ms</b>\n" +
                              $"Tried {attempts} times.";
             }

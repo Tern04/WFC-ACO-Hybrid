@@ -66,6 +66,8 @@ namespace _Project.Scripts.MapGeneration.Core
             List<Vector3Int> builtPath = null;
             int attempts = 0;
             int maxRetries = 3; // Max number of attempts before giving up
+            
+            ACOHybridSolver aco = null; // Declare ACO solver variable for failure case visibility
 
             // Allow more attempts
             while (attempts < maxRetries && builtPath == null)
@@ -80,7 +82,7 @@ namespace _Project.Scripts.MapGeneration.Core
 
                 Vector3Int startPos = new Vector3Int(0, 0, 0);
                 Vector3Int endPos = new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1);
-
+                
                 if (algoIndex == 0) // 0 = DFS
                 {
                     DFSHybridSolver dfs = new DFSHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfc);
@@ -88,7 +90,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 }
                 else if (algoIndex == 1) // 1 = ACO
                 {
-                    ACOHybridSolver aco = new ACOHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfc, 7.9f);
+                    aco = new ACOHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfc);
                     builtPath = aco.RunACOHybrid(startPos, endPos);
                 }
                 else if (algoIndex == 2) // 2 = Pure WFC
@@ -115,6 +117,11 @@ namespace _Project.Scripts.MapGeneration.Core
             }
             else
             {
+                // If ACO failed, show pheromone levels
+                if (algoIndex == 1 && aco != null)
+                {
+                    VisualizePheromones(aco.GetPheromones());
+                }
                 uiCallback.UpdateResult(false, duration, attempts, 0);
             }
         }
@@ -365,6 +372,74 @@ namespace _Project.Scripts.MapGeneration.Core
             {
                 // Failure
                 Debug.LogError("Failed to generate a map. Ants could not find any buildable path.");
+            }
+        }
+        
+        private void VisualizePheromones(float[,,] pheromones)
+        {
+            float minPheromone = float.MaxValue;
+            float maxPheromone = 0f;
+            
+            // Get the min and max pheromone values
+            for (int x = 0; x < mapWidth; x++)
+            {
+                for (int y = 0; y < mapFloors; y++)
+                {
+                    for (int z = 0; z < mapDepth; z++)
+                    {
+                        float p = pheromones[x, y, z];
+                        if (p > 0.0001f)
+                        {
+                            if (p < minPheromone)
+                            {
+                                minPheromone = p;
+                            }
+                            
+                            if (p > maxPheromone)
+                            {
+                                maxPheromone = p;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Visualization of pheromone levels
+            for (int x = 0; x < mapWidth; x++)
+            {
+                for (int y = 0; y < mapFloors; y++)
+                {
+                    for (int z = 0; z < mapDepth; z++)
+                    {
+                        float p = pheromones[x, y, z];
+                        
+                        if (p > 0.0001f) 
+                        {
+                            GameObject node = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                            node.transform.position = new Vector3(x * tileSize, y * tileSize, z * tileSize); 
+                            Destroy(node.GetComponent<Collider>());
+
+                            float intensity = 0f;
+                            if (maxPheromone > minPheromone)
+                            {
+                                // Normalize intensity based on the range of pheromones
+                                intensity = (p - minPheromone) / (maxPheromone - minPheromone);
+                            }
+
+                            // Dynamic size based on intensity
+                            float dynamicSize = tileSize * Mathf.Lerp(0.05f, 0.15f, intensity);
+                            node.transform.localScale = Vector3.one * dynamicSize; 
+
+                            // Red - high value, Blue - low value
+                            Color heatmapColor = Color.Lerp(Color.blue, Color.red, intensity);
+
+                            Renderer rend = node.GetComponent<Renderer>();
+                            rend.material.color = heatmapColor;
+
+                            node.transform.parent = this.transform;
+                        }
+                    }
+                }
             }
         }
 

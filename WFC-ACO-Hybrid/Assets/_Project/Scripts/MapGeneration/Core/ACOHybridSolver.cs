@@ -310,6 +310,15 @@ namespace _Project.Scripts.MapGeneration.Core
             return -1; // Invalid direction
         }
 
+        /// <summary>
+        /// Returns the current state of the pheromone matrix.
+        /// </summary>
+        /// <returns>3D array of pheromones</returns>
+        public float[,,] GetPheromones()
+        {
+            return pheromones;
+        }
+
 
 
     }
