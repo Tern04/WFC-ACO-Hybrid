@@ -107,15 +107,18 @@ namespace _Project.Scripts.MapGeneration.Core
                     // Check the free neighbor's socket and move if valid'
                     if (!neighbor.IsCollapsed && !visitedPath.Contains(neighbor))
                     {
+                        string requiredEntrySocket = currentCell.CollapsedVariant.Sockets[dir];
+                        int entrySide = wfc.GetOppositeSide(dir);
+
                         List<TileVariant> validPathVariants = neighbor.AvailableVariants.Where(v =>
-                            HasValidExit(v, wfc.GetOppositeSide(dir), neighbor.GridPosition, visitedPath, endPos)
+                            v.Sockets[entrySide] == requiredEntrySocket &&
+                            HasValidExit(v, entrySide, neighbor.GridPosition, visitedPath, endPos)
                         ).ToList();
 
                         // If there are valid path variants, collapse the neighbor cell to one of them and continue the DFS crawl
                         if (validPathVariants.Count > 0)
                         {
-                            neighbor.AvailableVariants = validPathVariants;
-                            wfc.CollapseAndPropagate(neighbor);
+                            wfc.ForceCollapse(neighbor, validPathVariants);
 
                             visitedPath.Add(neighbor);
                             neighbor.isMainPath = true;
@@ -212,15 +215,18 @@ namespace _Project.Scripts.MapGeneration.Core
                     // Check the free neighbor's socket and move if valid'
                     if (!neighbor.IsCollapsed && !visitedPath.Contains(neighbor))
                     {
+                        string requiredEntrySocket = currentCell.CollapsedVariant.Sockets[dir];
+                        int entrySide = wfc.GetOppositeSide(dir);
+
                         List<TileVariant> validPathVariants = neighbor.AvailableVariants.Where(v =>
-                            HasValidExit(v, wfc.GetOppositeSide(dir), neighbor.GridPosition, visitedPath, endPos)
+                            v.Sockets[entrySide] == requiredEntrySocket &&
+                            HasValidExit(v, entrySide, neighbor.GridPosition, visitedPath, endPos)
                         ).ToList();
 
                         // If there are valid path variants, collapse the neighbor cell to one of them and continue the DFS crawl
                         if (validPathVariants.Count > 0)
                         {
-                            neighbor.AvailableVariants = validPathVariants;
-                            wfc.CollapseAndPropagate(neighbor);
+                            wfc.ForceCollapse(neighbor, validPathVariants);
 
                             neighbor.isMainPath = true;
                             onCellCollapsed?.Invoke(neighbor);
@@ -349,3 +355,4 @@ namespace _Project.Scripts.MapGeneration.Core
         
     }
 }
+
