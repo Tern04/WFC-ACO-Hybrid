@@ -10,7 +10,7 @@ namespace _Project.Scripts.MapGeneration.Core
 
         // UI data
         private int selectedMapIndex = 2; 
-        private readonly string[] mapSizeLabels = { "Malá (10x3x10)", "Střední (20x4x20)", "Velká (30x5x30)" };
+        private readonly string[] mapSizeLabels = { "Small (10x3x10)", "Medium (20x4x20)", "Large (30x5x30)" };
         private readonly Vector3Int[] mapSizes = { 
             new Vector3Int(10, 3, 10), 
             new Vector3Int(20, 4, 20), 
@@ -106,7 +106,7 @@ namespace _Project.Scripts.MapGeneration.Core
 
             // Window panel
             float panelWidth = 650; 
-            float panelHeight = 650;
+            float panelHeight = 780;
             float startX = (Screen.width - panelWidth) / 2;
             float startY = (Screen.height - panelHeight) / 2;
 
@@ -143,6 +143,18 @@ namespace _Project.Scripts.MapGeneration.Core
                 generateNextFrame = true;
             }
             GUI.enabled = true;
+
+            GUILayout.Space(20);
+
+            // Exit button
+            if (GUILayout.Button("<size=22><b>E X I T</b></size>", GUILayout.Height(60)))
+            {
+            #if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+            #else
+                Application.Quit();
+            #endif
+            }
 
             GUILayout.EndArea();
         }
