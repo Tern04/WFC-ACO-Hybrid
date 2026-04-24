@@ -65,7 +65,7 @@ namespace _Project.Scripts.MapGeneration.Core
             float startTime = Time.realtimeSinceStartup;
             List<Vector3Int> builtPath = null;
             int attempts = 0;
-            int maxRetries = 3; // Max number of attempts before giving up
+            int maxRetries = algoIndex == 0 ? CalculateMaxAttempts() : 3; // Allow more retries for DFS, fewer for ACO due to better performance
             
             ACOHybridSolver aco = null; // Declare ACO solver variable for failure case visibility
 
