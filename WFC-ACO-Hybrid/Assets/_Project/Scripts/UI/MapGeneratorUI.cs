@@ -1,4 +1,3 @@
-using _Project.Scripts.MapGeneration.Core;
 using UnityEngine;
 
 namespace _Project.Scripts.MapGeneration.Core
@@ -7,6 +6,9 @@ namespace _Project.Scripts.MapGeneration.Core
     {
         [Header("Map Generator")]
         public MapGenerator mapGenerator;
+        
+        [Header("Minimap")]
+        public RenderTexture minimapTexture;
 
         // UI data
         private int selectedMapIndex = 2; 
@@ -28,6 +30,10 @@ namespace _Project.Scripts.MapGeneration.Core
 
         // Texture for the background of the menu
         private Texture2D solidBackground;
+        
+        // Minimap data
+        private int currentMinimapFloor = 0;
+        private MinimapController minimapController;
 
         /// <summary>
         /// Initializes the UI and sets up the cursor.
@@ -37,6 +43,7 @@ namespace _Project.Scripts.MapGeneration.Core
             solidBackground = new Texture2D(1, 1);
             solidBackground.SetPixel(0, 0, new Color(0.15f, 0.15f, 0.15f, 1f));
             solidBackground.Apply();
+            minimapController = FindFirstObjectByType<MinimapController>();
             
             UpdateCursorState();
         }
@@ -62,6 +69,22 @@ namespace _Project.Scripts.MapGeneration.Core
                 UpdateCursorState();    
                 StartGeneration();      
             }
+            
+            if (!showMenu && minimapController != null && mapGenerator != null && Camera.main != null)
+            {
+                // Calculate floor based on camera's Y position
+                int calculatedFloor = Mathf.FloorToInt(Camera.main.transform.position.y / mapGenerator.tileSize);
+                
+                // Clamp the calculated floor to valid range
+                calculatedFloor = Mathf.Clamp(calculatedFloor, 0, mapGenerator.mapFloors - 1);
+
+                // Only update if the floor has changed to avoid unnecessary updates
+                if (calculatedFloor != currentMinimapFloor)
+                {
+                    currentMinimapFloor = calculatedFloor;
+                    minimapController.UpdateMinimapSlicing(currentMinimapFloor, mapGenerator.tileSize, mapGenerator.mapWidth, mapGenerator.mapDepth);
+                }
+            }
         }
 
         /// <summary>
@@ -82,6 +105,8 @@ namespace _Project.Scripts.MapGeneration.Core
             {
                 return;
             }
+            
+            DrawMinimap();
 
             // Little hint when menu is closed
             if (!showMenu)
@@ -158,6 +183,24 @@ namespace _Project.Scripts.MapGeneration.Core
 
             GUILayout.EndArea();
         }
+        
+        /// <summary>
+        /// Draws the minimap texture.
+        /// </summary>
+        void DrawMinimap()
+        {
+            if (minimapTexture != null)
+            {
+                int mapSize = 450;
+                int padding = 20;
+                Rect minimapRect = new Rect(Screen.width - mapSize - padding, padding, mapSize, mapSize);
+            
+                string title = $"Minimap - Floor {currentMinimapFloor}";
+                GUI.Box(new Rect(minimapRect.x - 5, minimapRect.y - 5, mapSize + 10, mapSize + 10), title);
+            
+                GUI.DrawTexture(minimapRect, minimapTexture, ScaleMode.ScaleToFit, false);
+            }
+        }
 
         /// <summary>
         /// Starts the generation process.
@@ -180,6 +223,20 @@ namespace _Project.Scripts.MapGeneration.Core
         public void UpdateResult(bool success, float timeMs, int attempts, int pathLength)
         {
             isGenerating = false;
+            
+            // Reset minimap floor
+            currentMinimapFloor = 0;
+            if (minimapController != null)
+            {
+                minimapController.UpdateMinimapSlicing(currentMinimapFloor, mapGenerator.tileSize, mapGenerator.mapWidth, mapGenerator.mapDepth);
+            }
+            
+            // Reset camera position
+            if (Camera.main != null)
+            {
+                Camera.main.transform.position = new Vector3(0, mapGenerator.tileSize * 0.5f, 0);
+                Camera.main.transform.rotation = Quaternion.Euler(0, 45, 0);
+            }
 
             if (success)
             {
