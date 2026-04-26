@@ -64,6 +64,8 @@ namespace _Project.Scripts.MapGeneration.Core
                 : 3; // Allow more retries for DFS crawler and pure WFC, fewer for ACO due to better performance
             
             ACOHybridSolver aco = null; // Declare ACO solver variable for failure case visibility
+            
+            bool isEnvironmentFinished = false;
 
             // Allow more attempts
             while (attempts < maxRetries && builtPath == null)
@@ -105,9 +107,14 @@ namespace _Project.Scripts.MapGeneration.Core
                     }
                     
                 }
+                isEnvironmentFinished = wfc.IsFullyCollapsed();
             }
 
             float duration = (Time.realtimeSinceStartup - startTime) * 1000f;
+            
+            bool hasPath = builtPath != null;
+            bool fullSuccess = hasPath && isEnvironmentFinished;
+            int finalPathLength = (hasPath && builtPath.Count > 0) ? builtPath.Count : 0;
 
             if (builtPath != null)
             {
@@ -127,7 +134,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 }
                 
                 InstantiateTiles();
-                uiCallback.UpdateResult(true, duration, attempts, builtPath.Count);
+                uiCallback.UpdateResult(fullSuccess, duration, attempts, finalPathLength);
             }
             else
             {
