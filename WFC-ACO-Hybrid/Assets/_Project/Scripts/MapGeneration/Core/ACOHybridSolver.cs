@@ -118,12 +118,14 @@ namespace _Project.Scripts.MapGeneration.Core
                 if (successfulAnts.Count > 0)
                 {
                     // Find the best path from the successful ants
-                    Ant bestIterAnt = successfulAnts.OrderBy(a => a.Path.Count).First();
+                    List<List<Vector3Int>> cleanedPaths = successfulAnts.Select(a => RemoveLoops(a.Path)).ToList();
 
+                    List<Vector3Int> bestIterAntPath = cleanedPaths.OrderBy(p => p.Count).First();
+                        
                     wfc.SaveSnapshot(); // Saves the current state of the WFC solver before simulating the path
                     
                     // Dry run the path in WFC to check if it's valid'
-                    bool isBuildable = SimulatePathInWFC(bestIterAnt.Path);
+                    bool isBuildable = SimulatePathInWFC(bestIterAntPath);
                     
                     wfc.RestoreSnapshot(); // Restores the WFC state after simulation
 
@@ -131,20 +133,20 @@ namespace _Project.Scripts.MapGeneration.Core
                     if (isBuildable)
                     {
                         // Update path if the new path is shorter than the best found so far
-                        if (bestIterAnt.Path.Count < bestLength)
+                        if (bestIterAntPath.Count < bestLength)
                         {
-                            bestLength = bestIterAnt.Path.Count;
-                            bestValidPath = new List<Vector3Int>(bestIterAnt.Path);
+                            bestLength = bestIterAntPath.Count;
+                            bestValidPath = new List<Vector3Int>(bestIterAntPath);
                         }
 
                         // Deposit pheromones on the path based on the length of the path
-                        DepositPheromones(bestIterAnt.Path, Q / bestIterAnt.Path.Count);
+                        DepositPheromones(bestIterAntPath, Q / bestIterAntPath.Count);
                     }
                     
                     else
                     {
                         // Penalize the path if it's not valid 
-                        PenalizePath(bestIterAnt.Path);
+                        PenalizePath(bestIterAntPath);
                     }
                 }
                 // Evaporate pheromones after each iteration
@@ -211,6 +213,35 @@ namespace _Project.Scripts.MapGeneration.Core
 
                 return !wfc.HasContradiction;
             }
+        }
+        
+        /// <summary>
+        /// Removes loops from the path.
+        /// </summary>
+        /// <param name="rawPath">List of grid positions representing the raw path found by the ant.
+        /// The path may contain loops where the ant crosses its own trail.</param>
+        /// <returns>List of grid positions representing the cleaned path with loops removed.</returns>
+        public List<Vector3Int> RemoveLoops(List<Vector3Int> rawPath)
+        {
+            List<Vector3Int> cleanPath = new List<Vector3Int>();
+
+            foreach (Vector3Int pos in rawPath)
+            {
+                int index = cleanPath.IndexOf(pos);
+        
+                if (index != -1)
+                {
+                    // Loop detected
+                    cleanPath.RemoveRange(index + 1, cleanPath.Count - index - 1);
+                }
+                else
+                {
+                    // Add position to the cleaned path if it's not already present
+                    cleanPath.Add(pos);
+                }
+            }
+
+            return cleanPath;
         }
 
 
