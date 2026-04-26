@@ -54,7 +54,7 @@ namespace _Project.Scripts.MapGeneration.Core
 
             int steps = 0;
             int maxSteps = CalculateMaxSteps();
-            
+
             while (!pathCompleted && steps < maxSteps)
             {
                 steps++;
@@ -93,7 +93,7 @@ namespace _Project.Scripts.MapGeneration.Core
                         int oppSide = wfc.GetOppositeSide(dir);
                         string endSocket = endCell.CollapsedVariant.Sockets[oppSide];
                         string mySocket = currentCell.CollapsedVariant.Sockets[dir];
-                        
+
                         if (endSocket == mySocket && (mySocket == "path" || mySocket.StartsWith("stairs_up")))
                         {
                             pathCompleted = true;
@@ -111,9 +111,36 @@ namespace _Project.Scripts.MapGeneration.Core
                         int entrySide = wfc.GetOppositeSide(dir);
 
                         List<TileVariant> validPathVariants = neighbor.AvailableVariants.Where(v =>
-                            v.Sockets[entrySide] == requiredEntrySocket &&
-                            HasValidExit(v, entrySide, neighbor.GridPosition, visitedPath, endPos)
+                        {
+                            // Valid socket check
+                            if (v.Sockets[entrySide] != requiredEntrySocket) return false;
+
+                            // Check if the neighbor is a stairs_top variant
+                            bool isStairsTop = v.Data.name.ToLower().Contains("stairs_top");
+
+                            // Check if the entry side is horizontal (0-3)
+                            bool isHorizontalEntry = (entrySide >= 0 && entrySide <= 3);
+
+                            // Stairs_top variants can only be entered horizontally
+                            if (isStairsTop && isHorizontalEntry)
+                            {
+                                return false;
+                            }
+
+                            // Valid exit check
+                            return HasValidExit(v, entrySide, neighbor.GridPosition, visitedPath, endPos);
+                        }).ToList();
+
+                        // Filter out variants with more than 2 path or stairs_up sockets
+                        var cleanVariants = validPathVariants.Where(v =>
+                            v.Sockets.Count(s => s == "path" || s.StartsWith("stairs_up")) <= 2
                         ).ToList();
+
+                        // If there are cleaner variants, use them
+                        if (cleanVariants.Count > 0)
+                        {
+                            validPathVariants = cleanVariants;
+                        }
 
                         // If there are valid path variants, collapse the neighbor cell to one of them and continue the DFS crawl
                         if (validPathVariants.Count > 0)
@@ -137,138 +164,24 @@ namespace _Project.Scripts.MapGeneration.Core
                 }
             }
 
-            if (!pathCompleted)
+            // Attempt to fill the rest of the map using WFC - Contradictions on 2D grids
+            bool wfcSuccess = wfc.RunWFC();
+
+            if (!wfcSuccess)
             {
+                // Fallback for 2D maps: If environment generation fails, we still return the path.
+                if (mapFloors == 1)
+                {
+                    return finalPath;
+                }
+
+                // For 3D maps, we still consider environment failure as a total failure.
                 return null;
             }
 
-            // Run WFC to fill the remaining cells
-            return wfc.RunWFC() ? finalPath : null;
+            return finalPath;
         }
 
-        /// <summary>
-        /// Animated variant of the DFS-WFC hybrid solver.
-        /// First, a DFS-guided path is collapsed step-by-step and visualized through callback events.
-        /// After the endpoint is connected, classic WFC completes the remaining unresolved cells.
-        /// </summary>
-        public IEnumerator RunDFSHybridAnimated(Vector3Int startPos, Vector3Int endPos, Action<Cell> onCellCollapsed)
-        {
-            Cell currentCell = grid[startPos.x, startPos.y, startPos.z];
-            Cell endCell = grid[endPos.x, endPos.y, endPos.z];
-
-            // Initialize the DFS crawler with the start cell and an empty path
-            bool pathCompleted = false;
-            HashSet<Cell> visitedPath = new HashSet<Cell> { currentCell };
-            currentCell.isMainPath = true;
-
-            int steps = 0;
-            int maxSteps = CalculateMaxSteps();
-
-            while (!pathCompleted && steps < maxSteps)
-            {
-                steps++;
-
-                // Check all 6 directions for valid path sockets and prioritize those that lead closer to the end position
-                List<int> possibleDirections = new List<int>();
-                for (int i = 0; i < 6; i++)
-                {
-                    string socket = currentCell.CollapsedVariant.Sockets[i];
-                    if (socket == "path" || socket.StartsWith("stairs_up"))
-                    {
-                        possibleDirections.Add(i);
-                    }
-                }
-
-                // Sort possible directions by distance to the end position
-                possibleDirections = possibleDirections.OrderBy(dir =>
-                    Vector3Int.Distance(currentCell.GridPosition + GetDirVector(dir), endPos)
-                ).ToList();
-
-                bool moved = false;
-
-                // Try to move in one of the possible directions
-                foreach (int dir in possibleDirections)
-                {
-                    Vector3Int nPos = currentCell.GridPosition + GetDirVector(dir);
-                    if (!IsInBounds(nPos))
-                    {
-                        continue;
-                    }
-
-                    Cell neighbor = grid[nPos.x, nPos.y, nPos.z];
-
-                    // Check if we reached the end position
-                    if (neighbor == endCell)
-                    {
-                        int oppSide = wfc.GetOppositeSide(dir);
-                        string endSocket = endCell.CollapsedVariant.Sockets[oppSide];
-                        string mySocket = currentCell.CollapsedVariant.Sockets[dir];
-
-                        if (endSocket == mySocket && (mySocket == "path" || mySocket.StartsWith("stairs_up")))
-                        {
-                            pathCompleted = true;
-                            moved = true;
-                            break;
-                        }
-                    }
-
-                    // Check the free neighbor's socket and move if valid'
-                    if (!neighbor.IsCollapsed && !visitedPath.Contains(neighbor))
-                    {
-                        string requiredEntrySocket = currentCell.CollapsedVariant.Sockets[dir];
-                        int entrySide = wfc.GetOppositeSide(dir);
-
-                        List<TileVariant> validPathVariants = neighbor.AvailableVariants.Where(v =>
-                            v.Sockets[entrySide] == requiredEntrySocket &&
-                            HasValidExit(v, entrySide, neighbor.GridPosition, visitedPath, endPos)
-                        ).ToList();
-
-                        // If there are valid path variants, collapse the neighbor cell to one of them and continue the DFS crawl
-                        if (validPathVariants.Count > 0)
-                        {
-                            wfc.ForceCollapse(neighbor, validPathVariants);
-
-                            neighbor.isMainPath = true;
-                            onCellCollapsed?.Invoke(neighbor);
-
-                            visitedPath.Add(neighbor);
-                            currentCell = neighbor;
-                            moved = true;
-
-                            // Delay the next frame to allow the cell to collapse and visualize the change
-                            yield return new WaitForSeconds(0.06f);
-                            break;
-                        }
-                    }
-                }
-
-                if (!moved)
-                {
-                    Debug.LogWarning("DFS crawler is blocked, cannot reach the end cell.");
-                    yield break;
-                }
-            }
-
-            if (!pathCompleted)
-            {
-                yield break;
-            }
-
-            Debug.Log("Path generation completed. Generating environment.");
-
-            // Run WFC to fill the remaining cells
-            while (!wfc.IsFullyCollapsed())
-            {
-                if (!wfc.TryCollapseNextCell(out Cell nextCell))
-                {
-                    Debug.LogWarning("WFC failed to collapse a cell, generation cannot be completed.");
-                    yield break;
-                }
-
-                onCellCollapsed?.Invoke(nextCell);
-                yield return new WaitForSeconds(0.01f);
-            }
-        }
 
         /// <summary>
         /// Checks if a cell has a valid exit from a given direction.
