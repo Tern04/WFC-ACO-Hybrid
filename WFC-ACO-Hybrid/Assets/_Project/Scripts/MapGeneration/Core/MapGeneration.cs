@@ -42,12 +42,6 @@ namespace _Project.Scripts.MapGeneration.Core
         void Start()
         {
             InitializeGrid();
-            //RunWFC();
-            //StartCoroutine(GenerateDFSHybridAnimated());
-            //GenerateValidDFSMap();
-            //RunWFCBenchmark();
-            //GenerateValidACOMap();
-            //RunACOBenchmark();
         }
         
         /// <summary>
@@ -65,7 +59,9 @@ namespace _Project.Scripts.MapGeneration.Core
             float startTime = Time.realtimeSinceStartup;
             List<Vector3Int> builtPath = null;
             int attempts = 0;
-            int maxRetries = algoIndex == 0 ? CalculateMaxAttempts() : 3; // Allow more retries for DFS, fewer for ACO due to better performance
+            int maxRetries = algoIndex == 0 || algoIndex == 2
+                ? CalculateMaxAttempts()
+                : 3; // Allow more retries for DFS crawler and pure WFC, fewer for ACO due to better performance
             
             ACOHybridSolver aco = null; // Declare ACO solver variable for failure case visibility
 
@@ -95,10 +91,19 @@ namespace _Project.Scripts.MapGeneration.Core
                 }
                 else if (algoIndex == 2) // 2 = Pure WFC
                 {
-                    wfc.RunWFC();
+                    bool wfcSuccess = wfc.RunWFC();
                     
-                    // None path is generated in pure wfc
-                    builtPath = new List<Vector3Int>(); 
+                    if (wfcSuccess)
+                    {
+                        // Success, create an empty list for validation
+                        builtPath = new List<Vector3Int>(); 
+                    }
+                    else
+                    {
+                        // Failure, set it to null to indicate failure
+                        builtPath = null; 
+                    }
+                    
                 }
             }
 
@@ -106,9 +111,18 @@ namespace _Project.Scripts.MapGeneration.Core
 
             if (builtPath != null)
             {
+                Vector3Int startPos = new Vector3Int(0, 0, 0);
+                Vector3Int endPos = new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1);
+
                 // Path visualization
                 foreach (Vector3Int pos in builtPath)
                 {
+                    // Skip the start and end positions
+                    if (pos == startPos || pos == endPos)
+                    {
+                        continue;
+                    }
+                    
                     grid[pos.x, pos.y, pos.z].isMainPath = true;
                 }
                 
@@ -272,53 +286,6 @@ namespace _Project.Scripts.MapGeneration.Core
             if (!success)
             {
                 Debug.LogError("Failed to generate a valid map after " + attempts + " attempts.");
-            }
-        }
-
-        /// <summary>
-        /// Generates a valid map by repeatedly running the hybrid DFS algorithm until a valid map is found.
-        /// Iterates up to a maximum number of attempts to prevent infinite loops.
-        /// Uses DFS to guide the WFC process and visualizes the generation in real-time.
-        /// </summary>
-        /// <returns></returns>
-        public IEnumerator GenerateDFSHybridAnimated()
-        {
-            int attempt = 0;
-            bool success = false;
-            int maxAttempts = CalculateMaxAttempts();
-
-            while (!success && attempt < maxAttempts)
-            {
-                attempt++;
-                ClearScene();
-                ResetGrid();
-
-                // Initialize the WFC solver and set the start with finish and boundary constraints
-                WFCSolver solver = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
-                solver.ApplyBoundaryConstraints();
-                SetStartAndFinish(solver, true);
-                DFSHybridSolver dfsSolver = new DFSHybridSolver(grid, mapWidth, mapFloors, mapDepth, solver);
-
-                // Set start and finish positions in the corners of the map
-                Vector3Int startPos = new Vector3Int(0, 0, 0);
-                Vector3Int endPos = new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1);
-
-                // Run the hybrid DFS algorithm with visualization
-                yield return StartCoroutine(dfsSolver.RunDFSHybridAnimated(startPos, endPos, VisualizeCell));
-
-                // Check if the WFC process completed successfully and if a valid path exists
-                PathValidator validator = new PathValidator(grid, mapWidth, mapFloors, mapDepth);
-
-                if (solver.IsFullyCollapsed() && validator.IsPathPossibleDFS(startPos, endPos))
-                {
-                    Debug.Log("Valid map generated after" + attempt + " attempts.");
-                    success = true;
-                }
-                else
-                {
-                    Debug.LogWarning("Attempt number" + attempt + " failed.)");
-                    yield return new WaitForSeconds(0.5f); // Wait before retrying
-                }
             }
         }
 
