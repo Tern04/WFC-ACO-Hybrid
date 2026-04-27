@@ -7,7 +7,6 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using _Project.Scripts.MapGeneration.Data;
-using _Project.Scripts.Pathfinding;
 using _Project.Scripts.Utils;
 using Debug = UnityEngine.Debug;
 
