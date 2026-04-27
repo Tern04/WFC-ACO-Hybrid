@@ -30,6 +30,10 @@ namespace _Project.Scripts.MapGeneration.Core
         
         private float[,,] pheromones;
 
+        /// <summary>
+        /// Constructor for the ACOHybridSolver class.
+        /// Initializes the solver with the grid, map dimensions, WFC solver, and ACO parameters.
+        /// </summary>
         public ACOHybridSolver(Cell[,,] grid, int mapWidth, int mapFloors, int mapDepth,
             WFCSolver wfc, float beta = -1, int colonySize= -1, int iterations = -1)
         {

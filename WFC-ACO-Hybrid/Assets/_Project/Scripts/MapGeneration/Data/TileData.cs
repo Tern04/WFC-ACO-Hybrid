@@ -3,6 +3,9 @@ using UnityEngine;
 namespace _Project.Scripts.MapGeneration.Data
 {
     
+    /// <summary>
+    /// ScriptableObject containing data for a single tile type, including its prefab, sockets, and WFC settings.
+    /// </summary>
     [CreateAssetMenu(fileName = "NewTile", menuName = "WFC/Tile Data")]
     public class TileData : ScriptableObject
     {

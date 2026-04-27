@@ -349,6 +349,10 @@ namespace _Project.Scripts.MapGeneration.Core
             }
         }
         
+        /// <summary>
+        /// Visualizes the pheromone levels on the map by instantiating spheres with dynamic sizes and colors.
+        /// </summary>
+        /// <param name="pheromones">3D array of pheromone levels</param>
         private void VisualizePheromones(float[,,] pheromones)
         {
             float minPheromone = float.MaxValue;

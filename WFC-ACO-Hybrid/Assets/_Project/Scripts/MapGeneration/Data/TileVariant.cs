@@ -1,5 +1,8 @@
 namespace _Project.Scripts.MapGeneration.Data
 {
+    /// <summary>
+    /// Represents a specific rotated variant of a TileData, computing its rotated sockets.
+    /// </summary>
     public class TileVariant
     {
         public TileData Data;

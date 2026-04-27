@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace _Project.Scripts.MapGeneration.Core
 {
+    /// <summary>
+    /// UI controller for the Map Generator, handling user input, map settings, and minimap updates.
+    /// </summary>
     public class MapGeneratorUI : MonoBehaviour
     {
         [Header("Map Generator")]

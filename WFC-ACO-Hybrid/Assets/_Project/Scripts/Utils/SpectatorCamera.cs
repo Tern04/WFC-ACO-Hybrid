@@ -21,6 +21,9 @@ public class SpectatorCamera : MonoBehaviour
         rotationY = rot.y;
     }
 
+    /// <summary>
+    /// Handles camera rotation and movement based on user input.
+    /// </summary>
     void Update()
     {
         // Check if the cursor is locked - user is in the menu
@@ -53,4 +56,4 @@ public class SpectatorCamera : MonoBehaviour
         
         transform.position += move * currentSpeed * Time.deltaTime;
     }
-}
+}   

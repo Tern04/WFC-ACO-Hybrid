@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 namespace _Project.Scripts.MapGeneration.Core
 {
+    /// <summary>
+    /// Represents a single cell in the grid for the WFC algorithm.
+    /// </summary>
     public class Cell
     {
         public Vector3Int GridPosition; // Position of the cell in the grid
