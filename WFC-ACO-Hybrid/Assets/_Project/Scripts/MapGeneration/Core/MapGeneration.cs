@@ -12,6 +12,10 @@ using Debug = UnityEngine.Debug;
 
 namespace _Project.Scripts.MapGeneration.Core
 {
+    /// <summary>
+    /// Main class responsible for generating the map using WFC and hybrid algorithms.
+    /// Handles the initialization, generation, and visualization of the map.
+    /// </summary>
     public class MapGenerator : MonoBehaviour
     {
         [Header("Map Settings")] 
