@@ -3,8 +3,8 @@ using UnityEngine;
 public class SpectatorCamera : MonoBehaviour
 {
     [Header("Speed settings")]
-    public float normalSpeed = 10f;
-    public float fastSpeed = 30f; 
+    public float normalSpeed = 25f;
+    public float fastSpeed = 60f; 
     public float lookSensitivity = 2f;
 
     private float rotationX = 0f;
@@ -52,7 +52,7 @@ public class SpectatorCamera : MonoBehaviour
         if (Input.GetKey(KeyCode.E)) moveUp = 1f;
         if (Input.GetKey(KeyCode.Q)) moveUp = -1f;
 
-        Vector3 move = transform.right * moveRight + transform.forward * moveForward + transform.up * moveUp;
+        Vector3 move = transform.right * moveRight + transform.forward * moveForward + Vector3.up * moveUp;
         
         transform.position += move * currentSpeed * Time.deltaTime;
     }
