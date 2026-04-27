@@ -285,6 +285,12 @@ namespace _Project.Scripts.MapGeneration.Core
                     // Mark the computed path for post-process visual highlighting.
                     foreach (Vector3Int pos in builtPath)
                     {
+                        // Skip the start and end positions
+                        if (pos == startPos || pos == endPos)
+                        {
+                            continue;
+                        }
+                        
                         grid[pos.x, pos.y, pos.z].isMainPath = true;
                     }
 
@@ -339,6 +345,12 @@ namespace _Project.Scripts.MapGeneration.Core
                 // Set the main path flag for visualization
                 foreach (Vector3Int pos in builtPath)
                 {
+                    // Skip the start and end positions
+                    if (pos == startPos || pos == endPos)
+                    {
+                        continue;
+                    }
+                    
                     grid[pos.x, pos.y, pos.z].isMainPath = true;
                 }
 

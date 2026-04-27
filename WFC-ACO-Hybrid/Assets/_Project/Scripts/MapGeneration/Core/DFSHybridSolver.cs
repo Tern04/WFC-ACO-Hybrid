@@ -50,7 +50,6 @@ namespace _Project.Scripts.MapGeneration.Core
             bool pathCompleted = false;
             List<Vector3Int> finalPath = new List<Vector3Int> { startPos };
             HashSet<Cell> visitedPath = new HashSet<Cell> { currentCell };
-            currentCell.isMainPath = true;
 
             int steps = 0;
             int maxSteps = CalculateMaxSteps();
@@ -98,7 +97,6 @@ namespace _Project.Scripts.MapGeneration.Core
                         {
                             pathCompleted = true;
                             moved = true;
-                            currentCell.isMainPath = true;
                             finalPath.Add(endPos);
                             break;
                         }
@@ -148,7 +146,6 @@ namespace _Project.Scripts.MapGeneration.Core
                             wfc.ForceCollapse(neighbor, validPathVariants);
 
                             visitedPath.Add(neighbor);
-                            neighbor.isMainPath = true;
                             finalPath.Add(nPos);
 
                             currentCell = neighbor;
