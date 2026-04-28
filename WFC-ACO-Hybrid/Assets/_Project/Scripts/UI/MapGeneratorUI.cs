@@ -144,7 +144,7 @@ namespace _Project.Scripts.MapGeneration.Core
             float startX = (Screen.width - panelWidth) / 2;
             float startY = (Screen.height - panelHeight) / 2;
 
-            GUILayout.BeginArea(new Rect(startX, startY, panelWidth, panelHeight), GUI.skin.window);
+            GUILayout.BeginArea(new Rect(startX, startY, panelWidth, panelHeight), GUI.skin.box);
             
             GUILayout.Space(30);
             
