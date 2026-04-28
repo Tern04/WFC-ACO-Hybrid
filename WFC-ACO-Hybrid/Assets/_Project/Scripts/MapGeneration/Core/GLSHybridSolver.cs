@@ -8,10 +8,10 @@ using _Project.Scripts.MapGeneration.Data;
 namespace _Project.Scripts.MapGeneration.Core
 {
     /// <summary>
-    /// Class for the DFS-WFC hybrid path generation algorithm.
-    /// It combines a DFS-like crawler with a WFC solver to generate a path from a start position to an end position.
+    /// Class for the GLS-WFC hybrid path generation algorithm.
+    /// It combines a greedy local search crawler with a WFC solver to generate a path from a start position to an end position.
     /// </summary>
-    public class DFSHybridSolver
+    public class GLSHybridSolver
     {
         private readonly Cell[,,] grid;
         private readonly int mapWidth;
@@ -20,7 +20,7 @@ namespace _Project.Scripts.MapGeneration.Core
         private readonly WFCSolver wfc;
 
         /// <summary>
-        /// Constructor for the DFSHybridSolver class.
+        /// Constructor for the GLSHybridSolver class.
         /// Initializes the solver with the grid, width, floors, and depth of the map.
         /// </summary>
         /// <param name="grid">The 3D grid of cells representing the map</param>
@@ -28,7 +28,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <param name="floors">Number of floors in the map</param>
         /// <param name="depth">Depth of the map</param>
         /// <param name="wfcSolver">The WFC solver instance</param>
-        public DFSHybridSolver(Cell[,,] grid, int width, int floors, int depth, WFCSolver wfcSolver)
+        public GLSHybridSolver(Cell[,,] grid, int width, int floors, int depth, WFCSolver wfcSolver)
         {
             this.grid = grid;
             this.mapWidth = width;
@@ -38,15 +38,15 @@ namespace _Project.Scripts.MapGeneration.Core
         }
 
         /// <summary>
-        /// Path generation algorithm using a DFS-like crawler, then WFC fills the remaining cells.
+        /// Path generation algorithm using a greedy local search crawler, then WFC fills the remaining cells.
         /// The crawler starts at the start position and tries to reach the end position by collapsing cells along the way.
         /// </summary>
-        public List<Vector3Int> RunDFSHybrid(Vector3Int startPos, Vector3Int endPos)
+        public List<Vector3Int> RunGLSHybrid(Vector3Int startPos, Vector3Int endPos)
         {
             Cell currentCell = grid[startPos.x, startPos.y, startPos.z];
             Cell endCell = grid[endPos.x, endPos.y, endPos.z];
 
-            // Initialize the DFS crawler with the start cell and an empty path
+            // Initialize the GLS crawler with the start cell and an empty path
             bool pathCompleted = false;
             List<Vector3Int> finalPath = new List<Vector3Int> { startPos };
             HashSet<Cell> visitedPath = new HashSet<Cell> { currentCell };
@@ -140,7 +140,7 @@ namespace _Project.Scripts.MapGeneration.Core
                             validPathVariants = cleanVariants;
                         }
 
-                        // If there are valid path variants, collapse the neighbor cell to one of them and continue the DFS crawl
+                        // If there are valid path variants, collapse the neighbor cell to one of them and continue the GLS crawl
                         if (validPathVariants.Count > 0)
                         {
                             wfc.ForceCollapse(neighbor, validPathVariants);
@@ -187,7 +187,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <param name="variant">The tile variant being checked for valid exits</param>
         /// <param name="entrySide">The side from which we entered the cell (0-5)</param>
         /// <param name="myPos">The position of the current cell in the grid</param>
-        /// <param name="visited">Set of cells already visited by the DFS crawler to avoid loops</param>
+        /// <param name="visited">Set of cells already visited by the GLS crawler to avoid loops</param>
         /// <param name="endPos">The position of the end cell we are trying to reach</param>
         /// <returns>True if there is at least one valid exit, false otherwise</returns>
         private bool HasValidExit(TileVariant variant, int entrySide, Vector3Int myPos, HashSet<Cell> visited, Vector3Int endPos)
@@ -254,9 +254,9 @@ namespace _Project.Scripts.MapGeneration.Core
         }
 
         /// <summary>
-        /// Calculates the maximum number of steps (DFS crawls) allowed based on the map size.
+        /// Calculates the maximum number of steps (GLS crawls) allowed based on the map size.
         /// </summary>
-        /// <returns>The maximum number of steps for the DFS crawler</returns>
+        /// <returns>The maximum number of steps for the GLS crawler</returns>
         private int CalculateMaxSteps()
         {
             int totalCells = mapWidth * mapFloors * mapDepth;
@@ -265,4 +265,3 @@ namespace _Project.Scripts.MapGeneration.Core
         
     }
 }
-
