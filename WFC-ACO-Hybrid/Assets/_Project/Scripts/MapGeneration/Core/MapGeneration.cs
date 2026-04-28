@@ -49,7 +49,7 @@ namespace _Project.Scripts.MapGeneration.Core
         
         /// <summary>
         /// Method for generating the map from UI.
-        /// 0 = DFS
+        /// 0 = GLS
         /// 1 = ACO
         /// 2 = Pure WFC
         /// </summary>
@@ -64,7 +64,7 @@ namespace _Project.Scripts.MapGeneration.Core
             int attempts = 0;
             int maxRetries = algoIndex == 0 || algoIndex == 2
                 ? CalculateMaxAttempts()
-                : 3; // Allow more retries for DFS crawler and pure WFC, fewer for ACO due to better performance
+                : 3; // Allow more retries for GLS crawler and pure WFC, fewer for ACO due to better performance
             
             ACOHybridSolver aco = null; // Declare ACO solver variable for failure case visibility
             
@@ -84,10 +84,10 @@ namespace _Project.Scripts.MapGeneration.Core
                 Vector3Int startPos = new Vector3Int(0, 0, 0);
                 Vector3Int endPos = new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1);
                 
-                if (algoIndex == 0) // 0 = DFS
+                if (algoIndex == 0) // 0 = GLS
                 {
-                    DFSHybridSolver dfs = new DFSHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfc);
-                    builtPath = dfs.RunDFSHybrid(startPos, endPos);
+                    GLSHybridSolver gls = new GLSHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfc);
+                    builtPath = gls.RunGLSHybrid(startPos, endPos);
                 }
                 else if (algoIndex == 1) // 1 = ACO
                 {
@@ -239,12 +239,12 @@ namespace _Project.Scripts.MapGeneration.Core
         }
 
         /// <summary>
-        /// Generates a valid map by repeatedly running the hybrid DFS algorithm until a valid map is found.
+        /// Generates a valid map by repeatedly running the hybrid GLS algorithm until a valid map is found.
         /// Iterates up to a maximum number of attempts to prevent infinite loops.
-        /// Uses DFS to guide the WFC process and visualizes the generation after the generation.
+        /// Uses GLS to guide the WFC process and visualizes the generation after the generation.
         /// Time and path length are measured for comparison.
         /// </summary>
-        private void GenerateValidDFSMap()
+        private void GenerateValidGLSMap()
         {
             int attempts = 0;
             bool success = false;
@@ -263,13 +263,13 @@ namespace _Project.Scripts.MapGeneration.Core
                 solver.ApplyBoundaryConstraints();
                 SetStartAndFinish(solver);
 
-                DFSHybridSolver dfsSolver = new DFSHybridSolver(grid, mapWidth, mapFloors, mapDepth, solver);
+                GLSHybridSolver glsSolver = new GLSHybridSolver(grid, mapWidth, mapFloors, mapDepth, solver);
 
                 Vector3Int startPos = new Vector3Int(0, 0, 0);
                 Vector3Int endPos = new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1);
 
-                // Retrieve the explicit DFS backbone path as an ordered sequence of grid coordinates.
-                List<Vector3Int> builtPath = dfsSolver.RunDFSHybrid(startPos, endPos);
+                // Retrieve the explicit GLS backbone path as an ordered sequence of grid coordinates.
+                List<Vector3Int> builtPath = glsSolver.RunGLSHybrid(startPos, endPos);
 
                 if (builtPath != null)
                 {
@@ -741,4 +741,3 @@ namespace _Project.Scripts.MapGeneration.Core
         }
     }
 }
-

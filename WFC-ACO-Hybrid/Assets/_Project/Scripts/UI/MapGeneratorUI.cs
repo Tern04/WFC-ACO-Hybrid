@@ -29,7 +29,7 @@ namespace _Project.Scripts.MapGeneration.Core
         };
 
         private int selectedAlgoIndex = 1; 
-        private readonly string[] algoLabels = { "DFS Crawler", "ACO Hybrid", "Pure WFC" };
+        private readonly string[] algoLabels = { "GLS Crawler", "ACO Hybrid", "Pure WFC" };
 
         private string resultText = "Waiting for input...";
         private bool isGenerating = false;
@@ -173,7 +173,7 @@ namespace _Project.Scripts.MapGeneration.Core
             // Check for specific 2D limitations
             bool is2D = mapSizes[selectedMapIndex].y == 1;
             bool isLarge2D = mapSizes[selectedMapIndex].x >= 50 && is2D;
-            bool isDFS = selectedAlgoIndex == 0;
+            bool isGLS = selectedAlgoIndex == 0;
             bool isACO = selectedAlgoIndex == 1;
             bool isWFC = selectedAlgoIndex == 2;
 
@@ -187,9 +187,9 @@ namespace _Project.Scripts.MapGeneration.Core
                     warningMessage = "<b>WARNING:</b> Large scale causes unresolvable contradictions." +
                                      " Use ACO.";
                 }
-                else if (isDFS)
+                else if (isGLS)
                 {
-                    warningMessage = "<b>NOTE:</b> DFS on 2D grids may only render the <b>PATH</b>.\n" +
+                    warningMessage = "<b>NOTE:</b> GLS on 2D grids may only render the <b>PATH</b>.\n" +
                                      "Environment generation often fails due to WFC constraints.";
                 }
                 else if (isWFC)
