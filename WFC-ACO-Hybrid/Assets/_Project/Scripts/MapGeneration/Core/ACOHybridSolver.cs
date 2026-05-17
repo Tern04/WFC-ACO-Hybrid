@@ -44,7 +44,6 @@ namespace _Project.Scripts.MapGeneration.Core
             this.wfc = wfc;
             this.beta = beta > 0 ? beta : 7.9f;
             
-            // Check for manual overrides of the parameters - benchmark
             if (colonySize > 0 && iterations > 0)
             {
                 this.colonySize = colonySize;
@@ -279,7 +278,7 @@ namespace _Project.Scripts.MapGeneration.Core
 
         /// <summary>
         /// Evaporates the pheromones in the map.
-        /// The evaporation rate is set to 0.05, meaning that 5% of the pheromones are lost each iteration.
+        /// The evaporation rate is set to 0.15, meaning that 15% of the pheromones are lost each iteration.
         /// </summary>
         private void EvaporatePheromones()
         {
