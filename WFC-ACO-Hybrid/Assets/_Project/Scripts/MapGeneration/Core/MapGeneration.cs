@@ -34,6 +34,8 @@ namespace _Project.Scripts.MapGeneration.Core
         [Header("Visualization")]
         public Material mainPathMaterial;
 
+        public int LastUsedSeed { get; private set; }
+
         private Cell[,,] grid; // 2D array representing the map
         private List<TileVariant> standardVariants; // List of all possible tile variants
         private List<TileVariant> startVariants; // List of possible start tile variants
@@ -53,11 +55,16 @@ namespace _Project.Scripts.MapGeneration.Core
         /// 1 = ACO
         /// 2 = Pure WFC
         /// </summary>
-        public void GenerateMapFromUI(int width, int floors, int depth, int algoIndex, MapGeneratorUI uiCallback)
+        public void GenerateMapFromUI(int width, int floors, int depth, int algoIndex, MapGeneratorUI uiCallback, int? seed = null)
         {
             mapWidth = width;
             mapFloors = floors;
             mapDepth = depth;
+
+            int usedSeed = seed ?? new System.Random().Next();
+            LastUsedSeed = usedSeed;
+            System.Random rng = new System.Random(usedSeed);
+            Debug.Log($"[MapGen] Seed: {usedSeed}");
 
             float startTime = Time.realtimeSinceStartup;
             List<Vector3Int> builtPath = null;
@@ -65,9 +72,9 @@ namespace _Project.Scripts.MapGeneration.Core
             int maxRetries = algoIndex == 0 || algoIndex == 2
                 ? CalculateMaxAttempts()
                 : 3; // Allow more retries for GLS crawler and pure WFC, fewer for ACO due to better performance
-            
+
             ACOHybridSolver aco = null; // Declare ACO solver variable for failure case visibility
-            
+
             bool isEnvironmentFinished = false;
 
             // Allow more attempts
@@ -76,14 +83,14 @@ namespace _Project.Scripts.MapGeneration.Core
                 attempts++;
                 ClearScene();
                 ResetGrid();
-                
-                WFCSolver wfc = new WFCSolver(grid, mapWidth, mapFloors, mapDepth);
+
+                WFCSolver wfc = new WFCSolver(grid, mapWidth, mapFloors, mapDepth, rng);
                 wfc.ApplyBoundaryConstraints();
                 SetStartAndFinish(wfc);
 
                 Vector3Int startPos = new Vector3Int(0, 0, 0);
                 Vector3Int endPos = new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1);
-                
+
                 if (algoIndex == 0) // 0 = GLS
                 {
                     GLSHybridSolver gls = new GLSHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfc);
@@ -91,30 +98,30 @@ namespace _Project.Scripts.MapGeneration.Core
                 }
                 else if (algoIndex == 1) // 1 = ACO
                 {
-                    aco = new ACOHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfc);
+                    aco = new ACOHybridSolver(grid, mapWidth, mapFloors, mapDepth, wfc, rng: rng);
                     builtPath = aco.RunACOHybrid(startPos, endPos);
                 }
                 else if (algoIndex == 2) // 2 = Pure WFC
                 {
                     bool wfcSuccess = wfc.RunWFC();
-                    
+
                     if (wfcSuccess)
                     {
                         // Success, create an empty list for validation
-                        builtPath = new List<Vector3Int>(); 
+                        builtPath = new List<Vector3Int>();
                     }
                     else
                     {
                         // Failure, set it to null to indicate failure
-                        builtPath = null; 
+                        builtPath = null;
                     }
-                    
+
                 }
                 isEnvironmentFinished = wfc.IsFullyCollapsed();
             }
 
             float duration = (Time.realtimeSinceStartup - startTime) * 1000f;
-            
+
             bool hasPath = builtPath != null;
             bool fullSuccess = hasPath && isEnvironmentFinished;
             int finalPathLength = (hasPath && builtPath.Count > 0) ? builtPath.Count : 0;
@@ -124,19 +131,14 @@ namespace _Project.Scripts.MapGeneration.Core
                 Vector3Int startPos = new Vector3Int(0, 0, 0);
                 Vector3Int endPos = new Vector3Int(mapWidth - 1, mapFloors - 1, mapDepth - 1);
 
-                // Path visualization
+                HashSet<Vector3Int> mainPathSet = new HashSet<Vector3Int>();
                 foreach (Vector3Int pos in builtPath)
                 {
-                    // Skip the start and end positions
-                    if (pos == startPos || pos == endPos)
-                    {
-                        continue;
-                    }
-                    
-                    grid[pos.x, pos.y, pos.z].isMainPath = true;
+                    if (pos == startPos || pos == endPos) continue;
+                    mainPathSet.Add(pos);
                 }
-                
-                InstantiateTiles();
+
+                InstantiateTiles(mainPathSet);
                 uiCallback.UpdateResult(fullSuccess, duration, attempts, finalPathLength);
             }
             else
@@ -283,19 +285,15 @@ namespace _Project.Scripts.MapGeneration.Core
                     Debug.Log("Path length: " + builtPath.Count);
 
                     // Mark the computed path for post-process visual highlighting.
+                    HashSet<Vector3Int> glsPathSet = new HashSet<Vector3Int>();
                     foreach (Vector3Int pos in builtPath)
                     {
-                        // Skip the start and end positions
-                        if (pos == startPos || pos == endPos)
-                        {
-                            continue;
-                        }
-                        
-                        grid[pos.x, pos.y, pos.z].isMainPath = true;
+                        if (pos == startPos || pos == endPos) continue;
+                        glsPathSet.Add(pos);
                     }
 
                     // Instantiate the final map tiles.
-                    InstantiateTiles();
+                    InstantiateTiles(glsPathSet);
                 }
             }
 
@@ -342,20 +340,16 @@ namespace _Project.Scripts.MapGeneration.Core
                 Debug.Log($"Total Generation Time: {duration:0.00} ms.");
                 Debug.Log($"Optimal Path Length: {builtPath.Count} steps.");
 
-                // Set the main path flag for visualization
+                // Collect the main path positions for visualization
+                HashSet<Vector3Int> acoPathSet = new HashSet<Vector3Int>();
                 foreach (Vector3Int pos in builtPath)
                 {
-                    // Skip the start and end positions
-                    if (pos == startPos || pos == endPos)
-                    {
-                        continue;
-                    }
-                    
-                    grid[pos.x, pos.y, pos.z].isMainPath = true;
+                    if (pos == startPos || pos == endPos) continue;
+                    acoPathSet.Add(pos);
                 }
 
                 // Instantiate the final map tiles with the main path highlighted
-                InstantiateTiles();
+                InstantiateTiles(acoPathSet);
             }
             else
             {
@@ -465,13 +459,13 @@ namespace _Project.Scripts.MapGeneration.Core
         /// Instantiates the tiles in the Unity scene based on the collapsed grid.
         /// Each tile is placed according to its grid position and rotation.
         /// </summary>
-        void InstantiateTiles()
+        void InstantiateTiles(HashSet<Vector3Int> mainPathSet = null)
         {
             foreach (var cell in grid)
             {
                 if (cell.CollapsedVariant != null)
                 {
-                    InstantiateCell(cell);
+                    InstantiateCell(cell, mainPathSet);
                 }
             }
         }
@@ -479,7 +473,7 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <summary>
         /// Instantiates a single collapsed cell and applies optional path visualization.
         /// </summary>
-        void InstantiateCell(Cell cell)
+        void InstantiateCell(Cell cell, HashSet<Vector3Int> mainPathSet = null)
         {
             Vector3 pos = new Vector3(cell.GridPosition.x * tileSize,
                 cell.GridPosition.y * tileSize,
@@ -488,7 +482,7 @@ namespace _Project.Scripts.MapGeneration.Core
             Quaternion rot = Quaternion.Euler(0, cell.CollapsedVariant.Rotation * 90, 0);
             GameObject tileObj = Instantiate(cell.CollapsedVariant.Data.prefab, pos, rot, transform);
 
-            if (cell.isMainPath)
+            if (mainPathSet != null && mainPathSet.Contains(cell.GridPosition))
             {
                 ApplyMainPathMaterial(tileObj);
             }

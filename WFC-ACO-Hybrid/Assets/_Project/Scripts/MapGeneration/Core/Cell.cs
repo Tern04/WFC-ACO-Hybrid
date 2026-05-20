@@ -15,9 +15,7 @@ namespace _Project.Scripts.MapGeneration.Core
         public List<TileVariant> AvailableVariants; // List of possible tiles that can still be placed in this cell based on the WFC constraints
 
         public TileVariant CollapsedVariant; // Final tile that was chosen
-        
-        public bool isMainPath = false;
-        
+
         /// <summary>
         /// Constructor for the Cell class. Initializes the cell with its grid position and a list of
         /// all possible tile variants.

@@ -34,6 +34,7 @@ namespace _Project.Scripts.MapGeneration.Core
         private string resultText = "Waiting for input...";
         private bool isGenerating = false;
         private bool showMenu = true;
+        private string seedInput = "";
         
         private bool generateNextFrame = false; // Flag for triggering generation on next frame
 
@@ -139,8 +140,8 @@ namespace _Project.Scripts.MapGeneration.Core
             GUI.Box(new Rect(0, 0, Screen.width, Screen.height), GUIContent.none, bgStyle);
 
             // Window panel
-            float panelWidth = 650; 
-            float panelHeight = 780;
+            float panelWidth = 650;
+            float panelHeight = 850;
             float startX = (Screen.width - panelWidth) / 2;
             float startY = (Screen.height - panelHeight) / 2;
 
@@ -168,7 +169,26 @@ namespace _Project.Scripts.MapGeneration.Core
             GUILayout.Space(10);
             selectedAlgoIndex = GUILayout.SelectionGrid(selectedAlgoIndex, algoLabels, 1, GUILayout.Height(90));
             
-            GUILayout.Space(40);
+            GUILayout.Space(20);
+
+            // Seed input
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            GUILayout.Label("<size=18><b>3. Seed (empty = random):</b></size>");
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.Space(5);
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            seedInput = GUILayout.TextField(seedInput, GUILayout.Width(200));
+            if (GUILayout.Button("Clear", GUILayout.Width(80)))
+            {
+                seedInput = "";
+            }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(20);
 
             // Check for specific 2D limitations
             bool is2D = mapSizes[selectedMapIndex].y == 1;
@@ -264,7 +284,8 @@ namespace _Project.Scripts.MapGeneration.Core
             isGenerating = true;
             resultText = "Generating map...";
             Vector3Int chosenSize = mapSizes[selectedMapIndex];
-            mapGenerator.GenerateMapFromUI(chosenSize.x, chosenSize.y, chosenSize.z, selectedAlgoIndex, this);
+            int? parsedSeed = int.TryParse(seedInput, out int s) ? s : (int?)null;
+            mapGenerator.GenerateMapFromUI(chosenSize.x, chosenSize.y, chosenSize.z, selectedAlgoIndex, this, parsedSeed);
         }
 
         /// <summary>
@@ -292,18 +313,22 @@ namespace _Project.Scripts.MapGeneration.Core
                 Camera.main.transform.rotation = Quaternion.Euler(0, 45, 0);
             }
 
+            string seedLine = $"Seed: <b>{mapGenerator.LastUsedSeed}</b>\n";
+
             if (success)
             {
                 resultText = $"State: <color=#00FF00><b>SUCCES</b></color>\n\n" +
+                             seedLine +
                              $"Time: <b>{timeMs:F0} ms</b>\n" +
                              $"Restarts: <b>{attempts}</b>\n" +
                              $"Path length: <b>{pathLength}</b>";
             }
-            else if (pathLength > 0) 
+            else if (pathLength > 0)
             {
                 // Path is found, but contradiction in environment failed the generation.
                 resultText = $"State: <color=#FFFF00><b>PATH ONLY</b></color>\n" +
                              $"<size=12>WFC Contradiction in environment</size>\n\n" +
+                             seedLine +
                              $"Time: <b>{timeMs:F0} ms</b>\n" +
                              $"Path length: <b>{pathLength}</b>\n" +
                              $"<i>Showing path in isolation.</i>";
@@ -311,6 +336,7 @@ namespace _Project.Scripts.MapGeneration.Core
             else
             {
                 resultText = $"State: <color=#FF0000><b>FAILURE</b></color>\n\n" +
+                             seedLine +
                              $"Time: <b>{timeMs:F0} ms</b>\n" +
                              $"Tried {attempts} times.";
             }

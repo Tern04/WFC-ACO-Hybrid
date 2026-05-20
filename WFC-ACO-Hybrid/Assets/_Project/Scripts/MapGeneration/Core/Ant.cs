@@ -19,6 +19,7 @@ namespace _Project.Scripts.MapGeneration.Core
 
         private readonly float alpha; // Pheromone weight
         private readonly float beta; // Heuristic weight
+        private readonly System.Random rng;
         
         // Map borders
         private readonly int mapWidth; 
@@ -41,14 +42,15 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <param name="alpha">Weight of the pheromone influence on the ant's decision-making</param>
         /// <param name="beta">Weight of the heuristic influence on the ant's decision-making</param>
         public Ant(Cell[,,] grid, float[,,] pheromones, Vector3Int endPos,
-            int mapWidth, int mapFloors, int mapDepth, float alpha, float beta)
+            int mapWidth, int mapFloors, int mapDepth, float alpha, float beta, System.Random rng)
         {
             this.grid = grid;
             this.pheromones = pheromones;
             this.endPos = endPos;
             this.alpha = alpha;
             this.beta = beta;
-            
+            this.rng = rng;
+
             this.mapWidth = mapWidth;
             this.mapFloors = mapFloors;
             this.mapDepth = mapDepth;
@@ -131,7 +133,7 @@ namespace _Project.Scripts.MapGeneration.Core
             }
 
             // Select the next step based on the probability with randomness
-            double randomValue = UnityEngine.Random.value * totalProbability;
+            double randomValue = rng.NextDouble() * totalProbability;
             double cumulative = 0;
 
             for (int i = 0; i < neighbors.Count; i++)

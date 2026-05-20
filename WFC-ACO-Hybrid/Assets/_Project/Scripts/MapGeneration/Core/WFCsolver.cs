@@ -45,13 +45,16 @@ namespace _Project.Scripts.MapGeneration.Core
         /// <param name="width">Width of the map</param>
         /// <param name="floors">Number of floors in the map</param>
         /// <param name="depth">Depth of the map</param>
-        public WFCSolver(Cell[,,] grid, int width, int floors, int depth)
+        private readonly System.Random rng;
+
+        public WFCSolver(Cell[,,] grid, int width, int floors, int depth, System.Random rng = null)
         {
             this.grid = grid;
             this.mapWidth = width;
             this.mapFloors = floors;
             this.mapDepth = depth;
-            
+            this.rng = rng ?? new System.Random();
+
             this.entropyHeap = new CellMinHeap();
             InitializeEntropyHeap();
         }
@@ -311,7 +314,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 return;
             }
             
-            int randomIndex = Random.Range(0, cell.AvailableVariants.Count);
+            int randomIndex = rng.Next(0, cell.AvailableVariants.Count);
             cell.CollapsedVariant = cell.AvailableVariants[randomIndex];
             
             List<TileVariant> toRemove = new List<TileVariant>();

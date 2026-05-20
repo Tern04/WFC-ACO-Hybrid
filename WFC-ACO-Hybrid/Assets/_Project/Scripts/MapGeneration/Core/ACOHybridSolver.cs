@@ -29,19 +29,21 @@ namespace _Project.Scripts.MapGeneration.Core
         private readonly int maxIterations; // Maximum number of colony iterations
         
         private float[,,] pheromones;
+        private readonly System.Random rng;
 
         /// <summary>
         /// Constructor for the ACOHybridSolver class.
         /// Initializes the solver with the grid, map dimensions, WFC solver, and ACO parameters.
         /// </summary>
         public ACOHybridSolver(Cell[,,] grid, int mapWidth, int mapFloors, int mapDepth,
-            WFCSolver wfc, float beta = -1, int colonySize= -1, int iterations = -1)
+            WFCSolver wfc, float beta = -1, int colonySize = -1, int iterations = -1, System.Random rng = null)
         {
             this.grid = grid;
             this.width = mapWidth;
             this.floors = mapFloors;
             this.depth = mapDepth;
             this.wfc = wfc;
+            this.rng = rng ?? new System.Random();
             this.beta = beta > 0 ? beta : 7.9f;
             
             if (colonySize > 0 && iterations > 0)
@@ -107,7 +109,7 @@ namespace _Project.Scripts.MapGeneration.Core
                 // Run ColonySize ants to explore the map and find paths to the target position
                 for (int i = 0; i < colonySize; i++)
                 {
-                    Ant ant = new Ant(grid, pheromones, endPos, width, floors, depth, Alpha, beta);
+                    Ant ant = new Ant(grid, pheromones, endPos, width, floors, depth, Alpha, beta, rng);
                     
                     ant.Explore(startPos, maxAntSteps);
                     
