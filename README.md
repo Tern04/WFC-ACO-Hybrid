@@ -138,9 +138,6 @@ WFC-ACO-Hybrid/
 │       ├── EntropyBenchmark.cs       # CSV benchmark runner
 │       ├── SpectatorCamera.cs        # WASD + Q/E free-fly camera
 │       └── MinimapController.cs      # per-floor top-down minimap
-├── Project_Overview.md               # English design overview
-├── SYSTEM_ARCHITECTURE.md            # detailed architecture (Czech)
-└── TECHNICKA_DOKUMENTACE.md          # technical reference (Czech)
 ```
 
 ## Running From Source
