@@ -1,51 +1,75 @@
 # Hybrid Procedural Environment Generation (WFC + ACO)
 
-This repository contains the implementation of my Bachelor's thesis project focused on a hybrid approach to procedural content generation (PCG). The project combines the **Wave Function Collapse (WFC)** algorithm with **Ant Colony Optimization (ACO)** to create navigable and structurally logical environments.
+This repository contains the implementation of my Bachelor's thesis: a hybrid procedural content generation (PCG) system built in **Unity 6.3 / C#** that combines **Wave Function Collapse (WFC)** with **Ant Colony Optimization (ACO)** to generate navigable 3D environments with a *guaranteed* traversable path from `[0, 0, 0]` to `[width-1, floors-1, depth-1]`.
 
-## Key Objectives
-
-The main goal is to develop a hybrid algorithm where agent-based feedback (ACO) influences the constraint-based generation (WFC).
-
-* **Pheromone-Driven Probabilities:** Implementing a feedback loop where pheromone density influences WFC tile selection (adjusting weights based on successful pathfinding).
-* **Verticality & Navigation:** Support for movement in 2D grids including vertical elements like stairs and ramps.
-* **Comparative Analysis:** Evaluating the performance and output quality of the Hybrid approach vs. Pure WFC generation.
-* **Visual Debugging:** Real-time visualization of pheromone trails and WFC entropy state within the Unity scene.
+The contribution is a practical demonstration that swarm-derived path constraints lift WFC out of the contradiction trap on long-route 3D grids: an ant colony pre-computes the strongest path through the uncollapsed grid, and that path is committed to WFC as a hard backbone constraint before the rest of the environment collapses around it.
 
 ## Tech Stack
 
 * **Engine:** Unity 6.3
 * **Language:** C#
-* **Algorithm Base:** 
-    * Wave Function Collapse (Constraint Satisfaction)
-    * Ant Colony Optimization (Swarm Intelligence / Pathfinding)
+* **Algorithms:**
+    * Wave Function Collapse (constraint satisfaction)
+    * Ant Colony Optimization (swarm-based pathfinding)
+    * Greedy Local Search (baseline path crawler)
 
-## Project Status & Roadmap
+## Project Status
 
-- [x] Initial Research & Literature Review
-- [x] Repository Setup & Environment Configuration
-- [x] Core WFC Implementation (C#)
-- [x] WFC + DFS Baseline & Validation (Performance benchmarking)
-- [x] Optimization (Priority Queue for Entropy, execution time improvements)
-- [ ] ACO Integration & Feedback Loop
-- [ ] Comparison Framework & Data Collection
-- [ ] Final Documentation
+This is a completed Bachelor's thesis project. The implementation ships with three solvers, a UI for interactive generation, CSV benchmark harnesses, and a Linux standalone build.
 
-## Current Implementations
+* **Full thesis (Czech):** [`Doc/Thesis_cz.pdf`](Doc/Thesis_cz.pdf)
+* **User manual (Czech):** [`manual_cz.md`](manual_cz.md)
 
-### 1. WFC + DFS Baseline (Greedy Crawler)
-To establish a baseline for comparison, a hybrid algorithm combining WFC with a Depth-First Search (DFS) agent was implemented. 
+## Implemented Algorithms
 
-**Principle of Operation:**
-* **Navigation:** The agent navigates the discrete grid step-by-step, utilizing a Greedy heuristic to move towards the goal.
-* **Local WFC Intervention:** Instead of walking on a pre-generated map, the agent actively builds it. Upon stepping into a new uncollapsed cell, it forces a local WFC collapse, restricting the tile selection to pieces that provide a valid exit.
-* **Propagation:** Every local collapse triggers WFC propagation to maintain stability in the surrounding grid (e.g., building walls around corners).
-* **Iterative Restart:** Due to the stochastic nature of WFC tile selection, the agent might be forced into building a dead-end. The algorithm utilizes an iterative restart mechanism to discard invalid states and ensure a 100% valid output.
+The application exposes three solvers selectable from the in-game UI (`GLS Crawler`, `ACO Hybrid`, `Pure WFC`):
 
-## Performance Profiling: Naive WFC Baseline
+### Pure WFC
 
-To establish a baseline for algorithmic complexity, the pure Wave Function Collapse (WFC) generation was benchmarked across various grid sizes over **100 iterations** per configuration. 
+Reference implementation of Wave Function Collapse over a 3D voxel grid (`WFCSolver`). Cells start with all `TileVariant` superpositions; the cell with the lowest entropy is collapsed to a single variant, and constraint propagation prunes incompatible variants from its six neighbours. Two optimisations matter for performance:
 
-The initial naive implementation utilizes a linear $O(N)$ search to find the cell with the lowest entropy. The data below demonstrates how this specific method (`GetCellWithLowestEntropyNaive`) becomes a computational bottleneck as the environment scales, heavily validating the theoretical $O(N^2)$ overall time complexity for the selection phase.
+* **Min-heap with lazy deletion** (`CellMinHeap`) — cells are enqueued as `(Cell, priority_at_insertion)` tuples; stale entries are discarded at dequeue time, keeping extract-min at *O(log N)* without ever updating heap nodes in place.
+* **Snapshot-based backtracking** — every `RemoveVariantFromCell` call is pushed to `removalHistory`; `SaveSnapshot()` / `RestoreSnapshot()` unwind the stack so a failed branch can be undone without rebuilding the grid.
+
+Pure WFC is reliable on small grids but degrades rapidly on long-route 3D layouts, where it dead-ends and needs full map restarts.
+
+### GLS + WFC (baseline hybrid)
+
+> **Naming note:** earlier drafts of this project referred to this baseline as *"WFC + DFS"*. That label is inaccurate — the algorithm is not depth-first. The implementation is a one-step greedy crawler, and the class is named [`GLSHybridSolver`](WFC-ACO-Hybrid/Assets/_Project/Scripts/MapGeneration/Core/GLSHybridSolver.cs). The README, benchmarks, and UI labels now use the correct name (GLS).
+
+`GLSHybridSolver` deploys a single agent that walks from start to finish one cell at a time. At every step it:
+
+1. Inspects the six neighbours and keeps those whose facing socket admits a `path` or `stairs_up` tile.
+2. **Sorts the candidates by Manhattan distance to the goal** and picks the closest one (purely greedy — no lookahead, no backtracking).
+3. Calls `wfc.ForceCollapse()` to lock that neighbour to a path-bearing variant; WFC propagates the new constraint.
+
+If the crawler runs out of valid neighbours, the entire map is discarded and `MapGenerator` retries from scratch. On large or 3D grids this restart loop is the dominant failure mode.
+
+For **single-floor maps** there is an additional fallback: if GLS lays a valid path but the surrounding WFC fill subsequently contradicts, the solver returns the path anyway under a **`PATH-ONLY`** flag (rendered as a yellow status in the UI) rather than failing outright.
+
+### ACO + WFC (main contribution)
+
+`ACOHybridSolver` (with per-agent logic in `Ant.cs`) decouples path discovery from environment generation:
+
+1. **Exploration.** A colony of artificial ants explores the uncollapsed grid. At each cell, an ant picks its next move with probability proportional to `(τ^α · η^β)`, where `τ` is the pheromone level on the edge and `η = 1 / (manhattan_distance_to_end + 0.1)` is the heuristic pull toward the goal. Each ant maintains a tabu list to avoid revisits.
+2. **Pheromone update.** Paths that reach the goal deposit `Q / path_length` pheromone along their cells; the global field evaporates by `ρ` each iteration.
+3. **Dry-run validation.** The strongest trail is extracted and *trial-collapsed* into WFC inside a `SaveSnapshot()` / `RestoreSnapshot()` bracket — this is the only safe way to verify the path is buildable under the socket system without corrupting solver state.
+4. **Hard-constraint commit.** Once a path passes the dry run, every cell on it is force-collapsed to a path/stairs variant. WFC then fills the surrounding environment around this guaranteed-valid backbone.
+
+**Default parameters** (see [`ACOHybridSolver.cs`](WFC-ACO-Hybrid/Assets/_Project/Scripts/MapGeneration/Core/ACOHybridSolver.cs)): `α = 1.0`, `β = 7.9`, `ρ = 0.15`, `Q = 100`, initial pheromone `0.1`.
+
+**Dynamic swarm sizing.** To keep wall-clock time tractable across orders-of-magnitude grid scales, colony size and iteration count scale with the square root of the cell count:
+
+```
+colonySize    = clamp(round(sqrt(cells) * 0.5), 10, 300)
+maxIterations = clamp(round(sqrt(cells) * 0.2),  8, 100)
+```
+
+Note that the pheromone field is used to **extract a single best path that becomes a hard WFC constraint**, not to bias WFC tile weights during collapse. Path discovery and environment collapse are kept as separate phases.
+
+## Performance: Naive WFC Baseline
+
+To establish a complexity baseline, pure WFC generation was benchmarked across grid sizes over **100 iterations** per configuration. The initial naive implementation uses a linear *O(N)* search to find the cell with the lowest entropy (`GetCellWithLowestEntropyNaive`). The table below shows how that single function becomes the dominant cost as the grid scales, validating the *O(N²)* overall complexity of the selection phase.
 
 | Grid Size | Cell Count | Avg Total (ms) | Avg Entropy Search (ms) | Entropy Share (%) | Max Total Time (ms) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -55,13 +79,11 @@ The initial naive implementation utilizes a linear $O(N)$ search to find the cel
 | **25x4x25** | 2,500 | 116.42 | 25.96 | 22.30 % | 129.14 |
 | **30x5x30** | 4,500 | 268.03 | 81.59 | 30.44 % | 306.09 |
 
-**Observation:** While the cell count from a $25 \times 4 \times 25$ grid to a $30 \times 5 \times 30$ grid increases by a factor of **1.8**, the isolated entropy search execution time increases by a factor of **3.14**. At 4,500 cells, the linear search function alone consumes over 30% of the entire CPU execution time. This benchmark serves as the foundation for the upcoming Min-Heap (Priority Queue) architectural optimization.
+**Observation:** while the cell count from a 25×4×25 grid to a 30×5×30 grid grows by a factor of **1.8**, isolated entropy-search time grows by a factor of **3.14**. At 4,500 cells the linear search alone consumes over 30 % of total CPU time — the motivation for the min-heap rewrite.
 
-## Performance Profiling: Min-Heap Optimization
+## Performance: Min-Heap Optimisation
 
-To eliminate the computational bottleneck observed in the naive approach, the $O(N)$ linear search was replaced with a custom **Min-Heap (Priority Queue)** data structure. 
-
-To handle the dynamic nature of WFC (where a cell's entropy decreases as constraints propagate) without incurring an $O(N)$ penalty to search and update the heap, the implementation utilizes a **Lazy Deletion** strategy. Cells are enqueued as static tuples `(Cell, priority_at_insertion)`. When extracting the minimum value, the algorithm verifies if the stored priority matches the cell's current entropy. Stale or "ghost" references are discarded in $O(1)$ time, strictly maintaining the $O(\log N)$ operational complexity for valid extractions.
+To remove that bottleneck, the *O(N)* linear search was replaced with a custom **min-heap (priority queue)**. To handle the dynamic nature of WFC — where a cell's entropy decreases as constraints propagate — without paying an *O(N)* penalty to find and update heap entries, the implementation uses a **lazy-deletion** strategy: cells are enqueued as static `(Cell, priority_at_insertion)` tuples; when extracting the minimum, the algorithm checks whether the stored priority still matches the cell's current entropy and discards stale "ghost" references in *O(1)*, preserving strict *O(log N)* extract-min for valid entries.
 
 | Grid Size | Cell Count | Avg Total (ms) | Avg Entropy Search (ms) | Entropy Share (%) | Max Total Time (ms) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -71,61 +93,108 @@ To handle the dynamic nature of WFC (where a cell's entropy decreases as constra
 | **25x4x25** | 2,500 | 108.70 | 0.99 | 0.91 % | 118.98 |
 | **30x5x30** | 4,500 | 212.44 | 1.99 | 0.93 % | 222.62 |
 
-**Conclusion & Comparison:** The transition to an $O(\log N)$ search complexity successfully neutralized the exponential scaling issue. On the largest tested grid (4,500 cells):
-1. **Target Acceleration:** The isolated entropy search time plummeted from **81.59 ms to 1.99 ms** (an approximate 40x speedup).
-2. **Bottleneck Elimination:** The selection phase, which previously consumed over 30% of the total execution time, was reduced to a marginal **0.93%**.
-3. **Worst-Case Stability:** The structural integrity of the tuple-based Min-Heap entirely eliminated execution spikes, reducing the maximum execution time (Worst-Case) from 306.09 ms to 222.62 ms.
+**Result.** On the largest tested grid (4,500 cells):
 
-*Note: All final benchmarks were executed under the same conditions on MacBook Air with Apple M2 CPU.*
+1. **Target acceleration.** Isolated entropy-search time dropped from **81.59 ms → 1.99 ms** (~40× speedup).
+2. **Bottleneck eliminated.** The selection phase shrank from ~30 % of total execution time to **0.93 %**.
+3. **Worst-case stability.** Max execution time fell from 306.09 ms to 222.62 ms — no more late-game spikes.
 
-## 4. ACO + WFC Hybrid (Swarm-Guided Collapse)
+*All benchmarks were run under the same conditions on a MacBook Air with Apple M2 CPU.*
 
-The core contribution of this project is the integration of Ant Colony Optimization to pre-calculate a probabilistic path before WFC execution. This approach solves the catastrophic failure rate (infinite loops/dead-ends) observed in pure WFC or greedy DFS approaches when applied to complex 3D environments.
+## Algorithm Comparison: GLS vs ACO
 
-**Principle of Operation:**
-* **Exploration Phase (ACO):** A swarm of artificial ants explores the uncollapsed 3D grid, searching for an optimal path from Start to Finish.
-* **Pheromone Deposition:** Ants deposit pheromones based on path length. The heuristic (Beta parameter) heavily influences verticality and target direction, solving local minimum traps in complex multi-floor setups.
-* **Dynamic Swarm Sizing:** To maintain linear execution time regardless of map size (from 300 up to 60,000 cells), the colony size and maximum iterations are scaled dynamically using a clamped square-root function.
-* **WFC Execution Phase:** The single strongest pheromone trail is extracted and forced into the WFC grid as absolute constraints (main path). The standard WFC algorithm then seamlessly builds the surrounding environment around this backbone.
+To quantify the value of the hybrid contribution, GLS and ACO were run head-to-head across six grid configurations (single-floor and multi-floor, small to large). The numbers below come from [`WFC-ACO-Hybrid/GLS_vs_ACO_Comparison.csv`](WFC-ACO-Hybrid/GLS_vs_ACO_Comparison.csv).
 
----
+| Grid | GLS Success % | GLS Avg (ms) | ACO Success % | ACO Avg (ms) | ACO Avg Path Length |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| 10x1x10 | 10 % | 0.9 | **100 %** | 20.6 | 19.4 |
+| 25x1x25 | 0 % | 1.4 | **100 %** | 66.9 | 52.6 |
+| 50x1x50 | 0 % | 1.1 | **85 %** | 163.2 | 169.2 |
+| 10x3x10 | 0 % | 0.6 | **90 %** | 41.3 | 21.7 |
+| 20x4x20 | 5 % | 3.5 | **100 %** | 217.5 | 45.6 |
+| 30x5x30 | 0 % | 1.4 | **85 %** | 830.1 | 70.5 |
 
-## Demonstrations & Executable Build
+**Headline finding.** GLS is fast but collapses to ≤ 10 % success on all but the smallest grid — its greedy single-step heuristic walks itself into dead ends that the surrounding WFC fill can't accommodate. ACO trades wall-clock time for **85–100 % success across every tested configuration** and produces meaningfully shorter paths (e.g. 45 vs 118 cells on 20×4×20). For the largest 3D grid (30×5×30, 4,500 cells) ACO is the only solver that succeeds at all.
 
-To practically demonstrate the findings detailed in the thesis, this repository provides pre-compiled standalone version of the application (available for Linux x86_64).
+## Project Structure
 
-### WFC_ACO_Hybrid
-**Can be downloaded via this link:** https://drive.google.com/drive/folders/1m2NoFISCkuBZmhd71xd42ExA-N-u5kq2?usp=share_link
+```
+WFC-ACO-Hybrid/
+├── Assets/_Project/Scripts/
+│   ├── MapGeneration/
+│   │   ├── Core/
+│   │   │   ├── WFCsolver.cs          # constraint propagation + snapshots
+│   │   │   ├── CellMinHeap.cs        # lazy-deletion priority queue
+│   │   │   ├── GLSHybridSolver.cs    # greedy crawler baseline
+│   │   │   ├── ACOHybridSolver.cs    # main contribution (swarm + dry-run)
+│   │   │   ├── Ant.cs                # per-agent ACO logic
+│   │   │   ├── Cell.cs               # voxel state
+│   │   │   └── MapGeneration.cs      # orchestrator (MapGenerator MonoBehaviour)
+│   │   └── Data/
+│   │       ├── TileData.cs           # ScriptableObject: prefab + sockets + weight
+│   │       └── TileVariant.cs        # runtime rotated state of a tile
+│   ├── UI/MapGeneratorUI.cs          # IMGUI: presets + algorithm selector
+│   └── Utils/
+│       ├── EntropyBenchmark.cs       # CSV benchmark runner
+│       ├── SpectatorCamera.cs        # WASD + Q/E free-fly camera
+│       └── MinimapController.cs      # per-floor top-down minimap
+├── Project_Overview.md               # English design overview
+├── SYSTEM_ARCHITECTURE.md            # detailed architecture (Czech)
+└── TECHNICKA_DOKUMENTACE.md          # technical reference (Czech)
+```
 
-This build represents the final, stable product. It utilizes the dynamically scaled ACO solver with an experimentally proven optimal direction heuristic (Beta = 7.9).
-* **Purpose:** Demonstrates the speed, reliability, and capability of generating a fully valid path on massive grids (up to 60,000 cells) with a near 99% success rate on the first attempt.
-* **Visualization of failure:** Upon failure, the application renders a **Volumetric Heatmap** of the pheromone trails left in the 3D space.
+## Running From Source
 
-## Running the Application (Linux)
+1. Open `WFC-ACO-Hybrid/` as a project in **Unity 6.3**.
+2. Open the scene under `Assets/Scenes/`.
+3. Press **Play**.
 
-The provided builds are compiled for standard 64-bit Linux distributions (Ubuntu, Pop!_OS, etc.).
-Ensure the file has executable permissions before running:
+The in-game UI exposes six grid-size presets — **10×3×10**, **10×1×10**, **20×4×20**, **25×1×25**, **30×5×30**, **50×1×50** — and three solvers: **GLS Crawler**, **ACO Hybrid**, **Pure WFC**. The UI surfaces dynamic warnings when GLS or Pure WFC are selected on grids where they are known to fail, and recommends ACO instead.
 
-**Method A: Terminal**
+## Running the Prebuilt Linux Build
+
+A pre-compiled standalone version (Linux x86_64) is available via Google Drive:
+
+**[Download link](https://drive.google.com/drive/folders/1m2NoFISCkuBZmhd71xd42ExA-N-u5kq2?usp=share_link)**
+
+This build uses the dynamically scaled ACO solver with the experimentally chosen direction heuristic (`β = 7.9`). It demonstrates the speed, reliability, and capability of producing a fully valid path on grids up to ~60,000 cells with a near-99 % first-attempt success rate. On failure, the application renders a **volumetric heatmap** of the residual pheromone field as a visual debugging aid.
+
+The build is compiled for standard 64-bit Linux distributions (Ubuntu, Pop!_OS, etc.):
+
+**Method A — Terminal**
+
 1. Extract the ZIP archive.
 2. Open a terminal in the extracted directory.
-3. Grant execution rights (if necessary): `chmod +x Hybrid_LNX.x86_64`
-4. Launch the application: `./Hybrid_LNX.x86_64`
+3. Grant execute permission: `chmod +x Hybrid_LNX.x86_64`
+4. Launch: `./Hybrid_LNX.x86_64`
 
-**Method B: GUI**
+**Method B — GUI**
+
 1. Extract the ZIP archive.
-2. Right-click the `Hybrid_LNX.x86_64` file and select **Properties**.
-3. Navigate to the **Permissions** tab.
-4. Check the box **"Allow executing file as program"**.
-5. Close the window and double-click to run.
+2. Right-click `Hybrid_LNX.x86_64` and select **Properties**.
+3. Open the **Permissions** tab.
+4. Tick **"Allow executing file as program"**.
+5. Close the dialog and double-click to run.
 
 ## Controls (Spectator Camera)
 
-To navigate the generated environment, the cursor is locked and a free-flying spectator camera is activated upon successful generation.
-* **W, A, S, D:** Move forward, left, backward, right
-* **E / Q:** Move Up / Down
-* **Shift (Hold):** Sprint / Move Faster
-* **Mouse:** Look around
-* **ESC:** Unlock cursor and open the main menu
+On successful generation the cursor locks and a free-fly camera activates:
+
+* **W / A / S / D** — move forward / left / back / right
+* **E / Q** — move up / down
+* **Shift** (hold) — sprint
+* **Mouse** — look around
+* **ESC** — unlock cursor and reopen the main menu
+
+## Benchmarking
+
+`MapGenerator` exposes two programmatic benchmark entry points used to produce the tables above:
+
+* `RunWFCBenchmark()` — sweeps pure WFC across the preset grid sizes and writes `WFC_Heap_Entropy.csv` to the Unity project root.
+* `RunACOBenchmark()` — sweeps ACO under the dynamic-scaling regime and writes `ACO_Benchmark_SqrtDyn.csv`.
+
+Additional comparison CSVs in `WFC-ACO-Hybrid/` (e.g. `GLS_vs_ACO_Comparison.csv`, `LargeGrid_Stresstest.csv`, `Algorithm_Comparison_Results*.csv`) capture earlier sweeps used while tuning parameters.
+
 ---
-*This project is being developed as a Bachelor's Thesis at Faculty of Applied Sciences - University of West Bohemia*
+
+*Bachelor's Thesis — Faculty of Applied Sciences, University of West Bohemia.*
