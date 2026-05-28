@@ -15,7 +15,7 @@ The contribution is a practical demonstration that swarm-derived path constraint
 
 ## Project Status
 
-This is a completed Bachelor's thesis project. The implementation ships with three solvers, a UI for interactive generation, CSV benchmark harnesses, and a Linux standalone build.
+This is a completed Bachelor's thesis project. The implementation ships with three solvers, a UI for interactive generation, CSV benchmark harnesses, and a Linux, Windows build.
 
 * **Full thesis (Czech):** [`Doc/Thesis_cz.pdf`](Doc/Thesis_cz.pdf)
 * **User manual (Czech):** [`manual_cz.md`](manual_cz.md)
@@ -150,7 +150,7 @@ The in-game UI exposes six grid-size presets — **10×3×10**, **10×1×10**, *
 
 ## Running the Prebuilt Linux Build
 
-A pre-compiled standalone version (Linux x86_64) is available via Google Drive:
+A pre-compiled standalone version for Linux and Windows is available via Google Drive:
 
 **[Download link](https://drive.google.com/drive/folders/1m2NoFISCkuBZmhd71xd42ExA-N-u5kq2?usp=share_link)**
 
