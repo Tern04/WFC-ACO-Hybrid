@@ -157,7 +157,9 @@ A pre-compiled standalone version for Linux and Windows is available via Github 
 
 This build uses the dynamically scaled ACO solver with the experimentally chosen direction heuristic (`β = 7.9`). It demonstrates the speed, reliability, and capability of producing a fully valid path on grids up to ~60,000 cells with a near-99 % first-attempt success rate. On failure, the application renders a **volumetric heatmap** of the residual pheromone field as a visual debugging aid.
 
-The build is compiled for standard 64-bit Linux distributions (Ubuntu, Pop!_OS, etc.):
+The build is compiled for standard 64-bit Linux distributions (Ubuntu, Pop!_OS, etc.) and Windows:
+
+### Linux
 
 **Method A — Terminal**
 
@@ -173,6 +175,18 @@ The build is compiled for standard 64-bit Linux distributions (Ubuntu, Pop!_OS, 
 3. Open the **Permissions** tab.
 4. Tick **"Allow executing file as program"**.
 5. Close the dialog and double-click to run.
+
+### Windows
+
+**Method A — Terminal**
+1. Extract the ZIP archive.
+2. Open a terminal in the extracted directory.
+3. Launch: `.\WFC-ACO-Hybrid.exe`
+   
+**Method B — GUI**
+1. Extract the ZIP archive.
+2. Double-click `WFC-ACO-Hybrid.exe` to run.
+
 
 ## Controls (Spectator Camera)
 
