@@ -19,6 +19,7 @@ This is a completed Bachelor's thesis project. The implementation ships with thr
 
 * **Full thesis (Czech):** [`Doc/Thesis_cz.pdf`](Doc/Thesis_cz.pdf)
 * **User manual (Czech):** [`manual_cz.md`](manual_cz.md)
+* **User manual (English):** [`manual_en.md`](manual_en.md)
 
 ## Implemented Algorithms
 
