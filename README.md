@@ -152,7 +152,7 @@ The in-game UI exposes six grid-size presets — **10×3×10**, **10×1×10**, *
 
 A pre-compiled standalone version for Linux and Windows is available via Google Drive:
 
-**[Download link](https://drive.google.com/drive/folders/1m2NoFISCkuBZmhd71xd42ExA-N-u5kq2?usp=share_link)**
+**[Download link](https://github.com/Tern04/WFC-ACO-Hybrid/releases/latest)**
 
 This build uses the dynamically scaled ACO solver with the experimentally chosen direction heuristic (`β = 7.9`). It demonstrates the speed, reliability, and capability of producing a fully valid path on grids up to ~60,000 cells with a near-99 % first-attempt success rate. On failure, the application renders a **volumetric heatmap** of the residual pheromone field as a visual debugging aid.
 
