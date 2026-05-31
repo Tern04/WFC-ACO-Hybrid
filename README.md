@@ -151,7 +151,7 @@ The in-game UI exposes six grid-size presets — **10×3×10**, **10×1×10**, *
 
 ## Running the Prebuilt Linux Build
 
-A pre-compiled standalone version for Linux and Windows is available via Google Drive:
+A pre-compiled standalone version for Linux and Windows is available via Github Release:
 
 **[Download link](https://github.com/Tern04/WFC-ACO-Hybrid/releases/latest)**
 
